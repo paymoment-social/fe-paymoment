@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { News01Icon } from "@hugeicons/core-free-icons";
 import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { AuthorAvatar, CURRENT_USER, useComposer } from "@/modules/feed";
@@ -17,6 +19,13 @@ import { AnimatedNavIcon } from "./AnimatedNavIcon";
 
 export function Sidebar({ active }: { active: ShellSection }) {
   const { setOpen } = useComposer();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
+  const confirmLogout = () => {
+    setLogoutOpen(false);
+    toast.success("You have been logged out");
+  };
+
   return (
     <aside className="sticky top-0 hidden h-screen border-r border-border/70 pr-5 pt-7 lg:flex lg:flex-col">
       <Link href="/" className="mb-6 w-fit rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="PayMoment home"><ProductLogo /></Link>
@@ -40,9 +49,21 @@ export function Sidebar({ active }: { active: ShellSection }) {
             <DropdownMenuItem className="min-h-10 px-3"><Icon icon="solar:archive-linear" aria-hidden="true" />Archive</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="min-h-10 px-3"><Icon icon="solar:flag-linear" aria-hidden="true" />Report a problem</DropdownMenuItem>
-            <DropdownMenuItem className="min-h-10 px-3 text-destructive focus:text-destructive" onClick={() => toast.success("You have been logged out") }><Icon icon="solar:logout-2-linear" aria-hidden="true" />Log out</DropdownMenuItem>
+            <DropdownMenuItem className="min-h-10 px-3 text-destructive focus:text-destructive" onClick={() => setLogoutOpen(true)}><Icon icon="solar:logout-2-linear" aria-hidden="true" />Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Log out of PayMoment?</DialogTitle>
+              <DialogDescription>You can sign back in anytime to continue sharing your Moments.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setLogoutOpen(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmLogout}>Log out</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <div className="flex items-center justify-between gap-3 px-2"><span>&copy; 2026 PayMoment</span><div className="flex gap-3"><a href="#terms" className="rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Terms</a><a href="#privacy" className="rounded-sm hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Privacy</a></div></div>
       </footer>
     </aside>
