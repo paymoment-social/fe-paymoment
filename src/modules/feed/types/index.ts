@@ -15,6 +15,8 @@ export type FeedPost = {
   author: FeedAuthor;
   body: string;
   tag?: string;
+  tags?: string[];
+  mentions?: string[];
   createdAt: string;
   likes: number;
   replies: number;
@@ -22,6 +24,8 @@ export type FeedPost = {
   reward: number;
   media?: string[];
   card?: { eyebrow: string; title: string; description: string };
+  article?: { eyebrow: string; title: string; description: string; contentHtml: string; banner?: { image?: string; color: string; position: "left" | "center" | "right" } };
+  poll?: { question: string; options: { id: string; label: string; voterIds: string[] }[] };
   quotedPost?: FeedPost;
 };
 
@@ -30,6 +34,7 @@ export type CreateMomentInput = { body: string; media?: string };
 export type FeedReply = {
   id: string;
   postId: string;
+  parentId?: string;
   author: FeedAuthor;
   body: string;
   createdAt: string;

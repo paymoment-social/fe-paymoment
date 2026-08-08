@@ -2,37 +2,71 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useForm } from "@tanstack/react-form";
-import { useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CURRENT_USER } from "../constants";
+import { CURRENT_USER, PEOPLE } from "../constants";
 import { useComposer } from "../context/ComposerContext";
 import { useFeedStore } from "../store/useFeedStore";
+import { useBoxStore } from "@/modules/rewards/store/useBoxStore";
+import { useOptionalNotificationsContext } from "@/modules/notifications";
 import { AuthorAvatar } from "./AuthorAvatar";
+import { PollComposerDialog, type PollDraft } from "./PollComposerDialog";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
+const compactEmojiPickerStyle = {
+  "--epr-horizontal-padding": "8px",
+  "--epr-picker-border-radius": "14px",
+  "--epr-header-padding": "10px 8px",
+  "--epr-search-input-height": "34px",
+  "--epr-search-input-padding": "0 28px",
+  "--epr-search-input-border-radius": "999px",
+  "--epr-category-navigation-button-size": "28px",
+  "--epr-category-padding": "0 8px",
+  "--epr-category-label-height": "32px",
+  "--epr-emoji-size": "22px",
+  "--epr-emoji-padding": "1px",
+  "--epr-preview-height": "50px",
+} as CSSProperties;
+
 const tools = [
   { icon: "solar:gallery-linear", label: "Add image", action: "image" },
-  { icon: "solar:video-library-linear", label: "Add GIF", action: "gif" },
   { icon: "solar:chart-square-linear", label: "Add poll", action: "poll" },
   { icon: "solar:smile-circle-linear", label: "Add emoji", action: "emoji" },
+  { icon: "solar:document-text-linear", label: "Write article", action: "article" },
 ] as const;
+
+function mentionQuery(value: string) {
+  return value.match(/(?:^|\s)@([a-zA-Z0-9_.-]*)$/)?.[1] ?? null;
+}
 
 export function Composer({ compact = false }: { compact?: boolean }) {
   const { open, setOpen } = useComposer();
+  const router = useRouter();
   const addPost = useFeedStore((state) => state.addPost);
+  const notifications = useOptionalNotificationsContext();
+  const verified = useBoxStore((state) => state.balance >= 10);
   const fileInput = useRef<HTMLInputElement>(null);
+  const emojiTrigger = useRef<HTMLButtonElement>(null);
+  const emojiPicker = useRef<HTMLDivElement>(null);
   const [media, setMedia] = useState<string>();
   const [showEmoji, setShowEmoji] = useState(false);
+  const [pollOpen, setPollOpen] = useState(false);
+  const [poll, setPoll] = useState<PollDraft>();
+  const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const form = useForm({
     defaultValues: { body: "" },
     onSubmit: async ({ value }) => {
       const body = value.body.trim();
-      if (!body) return;
+      if (!body && !media && !poll) return;
+      const mentions = [...body.matchAll(/@([a-zA-Z0-9_.-]+)/g)].map((match) => match[1].toLowerCase());
+      const tags = [...body.matchAll(/#([a-zA-Z0-9_.-]+)/g)].map((match) => `#${match[1]}`);
       addPost({
         id: `local-${crypto.randomUUID()}`,
         author: CURRENT_USER,
@@ -42,10 +76,17 @@ export function Composer({ compact = false }: { compact?: boolean }) {
         replies: 0,
         reposts: 0,
         reward: 5,
+        mentions,
+        tags,
+        poll,
         media: media ? [media] : undefined,
       });
+      if (mentions.includes(CURRENT_USER.handle.toLowerCase())) {
+        notifications?.addNotification({ id: `mention-${crypto.randomUUID()}`, type: "mention", user: CURRENT_USER, text: "mentioned you in a new moment.", time: "now", read: false });
+      }
       form.reset();
       setMedia(undefined);
+      setPoll(undefined);
       setOpen(false);
       toast.success("Moment posted", { description: "+5 Box added to your pending rewards." });
     },
@@ -66,6 +107,54 @@ export function Composer({ compact = false }: { compact?: boolean }) {
     reader.readAsDataURL(file);
   }
 
+  function updateEmojiPickerPosition() {
+    const trigger = emojiTrigger.current;
+    if (!trigger) return;
+
+    const viewportPadding = 8;
+    const pickerWidth = Math.min(360, window.innerWidth - viewportPadding * 2);
+    const pickerHeight = 360;
+    const triggerRect = trigger.getBoundingClientRect();
+    const left = Math.min(
+      Math.max(viewportPadding, triggerRect.left + triggerRect.width / 2 - pickerWidth / 2),
+      window.innerWidth - pickerWidth - viewportPadding,
+    );
+    const spaceBelow = window.innerHeight - triggerRect.bottom - viewportPadding;
+    const canOpenAbove = triggerRect.top - viewportPadding >= pickerHeight;
+    const top = canOpenAbove && spaceBelow < pickerHeight
+      ? triggerRect.top - pickerHeight - viewportPadding
+      : Math.min(triggerRect.bottom + viewportPadding, window.innerHeight - pickerHeight - viewportPadding);
+
+    setEmojiPickerPosition({ top: Math.max(viewportPadding, top), left });
+  }
+
+  useEffect(() => {
+    if (!showEmoji) return;
+    const frame = window.requestAnimationFrame(updateEmojiPickerPosition);
+    const reposition = () => updateEmojiPickerPosition();
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (emojiPicker.current?.contains(target) || emojiTrigger.current?.contains(target)) return;
+      setShowEmoji(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowEmoji(false);
+    };
+
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [showEmoji]);
+
   const composerBody = (
     <form
       onSubmit={(event) => {
@@ -79,7 +168,7 @@ export function Composer({ compact = false }: { compact?: boolean }) {
         <AuthorAvatar author={CURRENT_USER} />
         <form.Field name="body">
           {(field) => (
-            <div className="min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1">
               <label htmlFor="moment-body" className="sr-only">What’s your PayBox moment?</label>
               <textarea
                 id="moment-body"
@@ -91,6 +180,13 @@ export function Composer({ compact = false }: { compact?: boolean }) {
                 rows={compact ? 2 : 5}
                 className="min-h-16 w-full resize-none bg-transparent py-2 text-base leading-6 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0"
               />
+              {mentionQuery(field.state.value) !== null && (() => {
+                const query = mentionQuery(field.state.value)!.toLowerCase();
+                const people = [CURRENT_USER, ...PEOPLE].filter((person, index, list) => list.findIndex((item) => item.id === person.id) === index && `${person.name} ${person.handle}`.toLowerCase().includes(query)).slice(0, 5);
+                return people.length ? <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl">
+                  {people.map((person) => <button key={person.id} type="button" className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onMouseDown={(event) => event.preventDefault()} onClick={() => { const next = field.state.value.replace(/(^|\s)@[a-zA-Z0-9_.-]*$/, `$1@${person.handle} `); field.handleChange(next); }}><AuthorAvatar author={person} className="size-8" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{person.name}</span><span className="block truncate text-xs text-muted-foreground">@{person.handle}</span></span>{person.verified && <Icon icon="solar:verified-check-bold" className="size-4 text-primary" aria-hidden="true" />}</button>)}
+                </div> : null;
+              })()}
               {!compact && <p className="text-right text-xs tabular-nums text-muted-foreground">{field.state.value.length}/500</p>}
             </div>
           )}
@@ -106,6 +202,8 @@ export function Composer({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
+      {poll && <div className="ml-14 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm"><Icon icon="solar:chart-square-linear" className="size-4 text-primary" aria-hidden="true" /><span className="min-w-0 flex-1 truncate">Poll: {poll.question}</span><Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Remove poll" onClick={() => setPoll(undefined)}><Icon icon="solar:close-circle-linear" className="size-4" aria-hidden="true" /></Button></div>}
+
       <div className="relative flex items-center justify-between gap-3 pl-12">
         <input ref={fileInput} type="file" accept="image/*" className="sr-only" aria-label="Upload image" onChange={(event) => chooseFile(event.target.files?.[0])} />
         <div className="flex items-center gap-1">
@@ -115,12 +213,17 @@ export function Composer({ compact = false }: { compact?: boolean }) {
               type="button"
               variant="ghost"
               size="icon"
+              ref={tool.action === "emoji" ? emojiTrigger : undefined}
               className="size-10 text-muted-foreground hover:text-foreground"
               aria-label={tool.label}
               onClick={() => {
                 if (tool.action === "image") fileInput.current?.click();
+                else if (tool.action === "article") {
+                  if (verified) router.push("/article/new");
+                  else toast.info("Verify your account to publish an article");
+                }
+                else if (tool.action === "poll") setPollOpen(true);
                 else if (tool.action === "emoji") setShowEmoji((value) => !value);
-                else toast.info(`${tool.label} is ready for backend integration`);
               }}
             >
               <Icon icon={tool.icon} className="size-5" aria-hidden="true" />
@@ -129,17 +232,23 @@ export function Composer({ compact = false }: { compact?: boolean }) {
         </div>
         <form.Subscribe selector={(state) => [state.values.body, state.isSubmitting]}>
           {([body, isSubmitting]) => (
-            <Button type="submit" disabled={!String(body).trim() || Boolean(isSubmitting)} className="h-10 min-w-20 rounded-xl bg-foreground px-5 text-background hover:bg-foreground/90">
+            <Button type="submit" disabled={(!String(body).trim() && !media && !poll) || Boolean(isSubmitting)} className="h-10 min-w-20 rounded-xl bg-foreground px-5 text-background hover:bg-foreground/90">
               {isSubmitting ? "Posting…" : "Post"}
             </Button>
           )}
         </form.Subscribe>
-        {showEmoji && (
-          <div className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[70] mx-auto w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-xl border bg-popover shadow-xl sm:absolute sm:inset-x-auto sm:bottom-12 sm:left-12 sm:mx-0">
+        {showEmoji && typeof document !== "undefined" && createPortal(
+          <div
+            ref={emojiPicker}
+            className="fixed z-[1000] w-[min(22.5rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-border/80 bg-popover p-1 shadow-2xl"
+            style={{ top: emojiPickerPosition.top, left: emojiPickerPosition.left }}
+          >
             <EmojiPicker
               theme={"dark" as never}
               width="100%"
-              height={300}
+              height={350}
+              className="compact-emoji-picker"
+              style={compactEmojiPickerStyle}
               lazyLoadEmojis
               skinTonesDisabled
               previewConfig={{ showPreview: false }}
@@ -150,23 +259,27 @@ export function Composer({ compact = false }: { compact?: boolean }) {
                 setShowEmoji(false);
               }}
             />
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     </form>
   );
 
-  if (compact) return <section className="rounded-xl border bg-card/50 p-4">{composerBody}</section>;
+  if (compact) return <><section className="rounded-xl border bg-card/50 p-4">{composerBody}</section><PollComposerDialog open={pollOpen} onOpenChange={setPollOpen} onCreated={setPoll} /></>;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="border-border bg-popover sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Create a moment</DialogTitle>
-          <DialogDescription>Share an update and earn Box when the community engages.</DialogDescription>
-        </DialogHeader>
-        {composerBody}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="border-border bg-popover sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Create a moment</DialogTitle>
+            <DialogDescription>Share an update and earn Box when the community engages.</DialogDescription>
+          </DialogHeader>
+          {composerBody}
+        </DialogContent>
+      </Dialog>
+      <PollComposerDialog open={pollOpen} onOpenChange={setPollOpen} onCreated={setPoll} />
+    </>
   );
 }

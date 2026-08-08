@@ -95,6 +95,51 @@ body {
   overflow-x: clip;
 }
 
+.article-editor-content table,
+.article-content table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+.article-editor-content .tableWrapper {
+  margin: 1.25rem 0;
+  overflow-x: auto;
+}
+
+.article-editor-content .tableWrapper table {
+  min-width: 32rem;
+}
+
+.article-editor-content th,
+.article-editor-content td,
+.article-content th,
+.article-content td {
+  min-width: 7rem;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.article-editor-content th,
+.article-content th {
+  background: rgba(184, 162, 255, 0.12) !important;
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.ProseMirror a,
+.article-editor-content a,
+.article-content a {
+  color: var(--primary) !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;
