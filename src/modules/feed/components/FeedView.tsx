@@ -1,16 +1,38 @@
 "use client";
 
 import { Icon } from "@iconify/react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useFeed } from "../hooks/useFeed";
 import { useComposer } from "../context/ComposerContext";
 import { Composer } from "./Composer";
 import { PostCard } from "./PostCard";
+import { useFeedStore } from "../store/useFeedStore";
 
 export function FeedView() {
   const feed = useFeed();
   const { setOpen } = useComposer();
+  const localPosts = useFeedStore((state) => state.localPosts);
+  const knownPostIds = useRef<Set<string> | null>(null);
+  const [newPostCount, setNewPostCount] = useState(0);
+
+  useEffect(() => {
+    const currentIds = new Set(localPosts.map((post) => post.id));
+    if (!knownPostIds.current) {
+      knownPostIds.current = currentIds;
+      return;
+    }
+
+    const addedCount = [...currentIds].filter((id) => !knownPostIds.current?.has(id)).length;
+    if (addedCount > 0) setNewPostCount((count) => count + addedCount);
+    knownPostIds.current = currentIds;
+  }, [localPosts]);
+
+  const showNewPosts = () => {
+    setNewPostCount(0);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (feed.isLoading) return <FeedSkeleton />;
   if (feed.isError) {
@@ -35,6 +57,13 @@ export function FeedView() {
 
   return (
     <div className="space-y-3">
+      {newPostCount > 0 && (
+        <div className="sticky top-[4.25rem] z-10 flex justify-center bg-transparent py-2" aria-live="polite">
+          <button type="button" onClick={showNewPosts} className="min-h-9 rounded-full border border-primary/40 bg-primary/20 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+            Show {newPostCount} new {newPostCount === 1 ? "post" : "posts"}
+          </button>
+        </div>
+      )}
       <Composer compact />
       {feed.data.map((post) => <PostCard key={post.id} post={post} />)}
     </div>
