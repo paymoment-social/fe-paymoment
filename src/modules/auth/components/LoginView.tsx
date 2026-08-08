@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ArrowUpRight, Check, LockKeyhole } from "lucide-react";
 
 type LoginMethod = "google" | "apple" | "email" | null;
 
 export function LoginView() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [activeMethod, setActiveMethod] = useState<LoginMethod>(null);
@@ -15,15 +17,14 @@ export function LoginView() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitted(true);
-    setActiveMethod("email");
-    setMessage("Email sign-in will be available when authentication is connected.");
+    router.push("/onboarding");
   };
 
   const handleSocialLogin = (method: Exclude<LoginMethod, "email" | null>) => {
     setSubmitted(true);
     setActiveMethod(method);
-    setMessage(`${method === "google" ? "Google" : "Apple"} sign-in will be available soon.`);
+    setMessage("Setting up your PayMoment profile...");
+    router.push("/onboarding");
   };
 
   return (
