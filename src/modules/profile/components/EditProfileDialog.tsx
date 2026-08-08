@@ -46,15 +46,15 @@ export function EditProfileDialog({ profile, open, onOpenChange }: { profile: Pr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(82dvh,44rem)] gap-0 overflow-hidden rounded-2xl border-border bg-popover p-0 sm:max-w-lg">
-        <DialogHeader className="border-b px-5 py-4 pr-14">
+      <DialogContent className="h-[min(90dvh,44rem)] max-h-[calc(100dvh-1rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl border-border bg-popover p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b px-5 py-4 pr-14">
           <DialogTitle className="text-lg font-semibold">Edit profile</DialogTitle>
           <DialogDescription>Shape how people discover and connect with you on PayMoment.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={submit} className="grid min-h-0 grid-rows-[1fr_auto] overflow-hidden">
-          <div className="overflow-y-auto px-5 py-2">
-            <div className="flex items-center justify-between gap-4 border-b py-4">
+        <form onSubmit={submit} className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-5">
+            <div className="flex items-center justify-between gap-4 border-b py-5">
               <div><p className="text-sm font-semibold">Profile photo</p><p className="mt-1 text-xs text-muted-foreground">PNG or JPG, up to 2 MB.</p></div>
               <button type="button" className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={() => avatarInput.current?.click()} aria-label="Change profile photo">
                 <AuthorAvatar author={draft} className="size-16 border-2 border-primary/30" />
@@ -71,7 +71,7 @@ export function EditProfileDialog({ profile, open, onOpenChange }: { profile: Pr
             <ProfileField label="Location" htmlFor="profile-location"><Input id="profile-location" autoComplete="address-level2" value={draft.location} onChange={(event) => update("location", event.target.value)} className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" /></ProfileField>
           </div>
 
-          <div className="border-t bg-background/35 p-4"><Button type="submit" className="h-12 w-full rounded-full bg-gradient-to-r from-primary to-violet-600 font-semibold text-primary-foreground hover:opacity-90">Save profile</Button></div>
+          <div className="shrink-0 border-t bg-background/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-sm"><Button type="submit" className="h-12 w-full rounded-full bg-gradient-to-r from-primary to-violet-600 font-semibold text-primary-foreground hover:opacity-90">Save profile</Button></div>
         </form>
       </DialogContent>
     </Dialog>
@@ -79,5 +79,5 @@ export function EditProfileDialog({ profile, open, onOpenChange }: { profile: Pr
 }
 
 function ProfileField({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
-  return <div className="border-b py-3"><label htmlFor={htmlFor} className="text-sm font-semibold">{label}</label><div className="mt-1">{children}</div></div>;
+  return <div className="space-y-1.5 border-b py-4"><label htmlFor={htmlFor} className="text-sm font-semibold">{label}</label><div>{children}</div></div>;
 }

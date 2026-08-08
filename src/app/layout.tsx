@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { InitialSplash } from "@/components/branding/InitialSplash";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProviders } from "@/providers/AppProviders";
@@ -28,8 +29,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className="dark">
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
         <AppProviders>
+          <InitialSplash />
           <TooltipProvider>{children}</TooltipProvider>
-          <Toaster position="top-center" offset={20} gap={10} />
+          <Toaster position="top-center" offset={16} gap={8} />
           <PwaRegistration />
         </AppProviders>
       </body>

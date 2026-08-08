@@ -13,13 +13,13 @@ import { notificationIcon } from "../utils/notificationIcon";
 
 export function NotificationsView() {
   const result = useNotifications();
-  const { readIds, filter, setFilter, markRead, markAllRead } = useNotificationsContext();
+  const { extraNotifications, readIds, filter, setFilter, markRead, markAllRead } = useNotificationsContext();
   const following = useFeedStore((state) => state.followingIds);
   const toggleFollow = useFeedStore((state) => state.toggleFollow);
   if (result.isLoading) return <div className="space-y-2" aria-label="Loading notifications">{[0, 1, 2, 3].map((item) => <Skeleton key={item} className="h-20 rounded-xl" />)}</div>;
   if (result.isError) return <section className="rounded-xl border border-destructive/30 bg-card p-5"><p className="font-medium">Couldn’t load notifications</p><p className="mt-1 text-sm text-muted-foreground">Your activity is safe. Try again in a moment.</p><Button variant="outline" className="mt-3 h-10" onClick={() => void result.refetch()}>Try again</Button></section>;
-  const allItems = result.data ?? [];
-  const items = allItems.filter((item) => filter === "all" || (filter === "rewards" ? item.type === "reward" : item.type === "reply" || item.type === "like"));
+  const allItems = [...extraNotifications, ...(result.data ?? [])];
+  const items = allItems.filter((item) => filter === "all" || (filter === "rewards" ? item.type === "reward" : filter === "mentions" ? item.type === "mention" : item.type === "reply" || item.type === "like"));
   const unread = allItems.filter((item) => !item.read && !readIds.includes(item.id)).length;
   return <div className="space-y-3">
     <div className="flex items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">Activity</h2><p className="text-sm text-muted-foreground">{unread ? `${unread} unread update${unread === 1 ? "" : "s"}` : "You’re all caught up"}</p></div><Button variant="ghost" className="h-10 text-primary" disabled={!unread} onClick={() => markAllRead(allItems.map((item) => item.id))}>Mark all read</Button></div>

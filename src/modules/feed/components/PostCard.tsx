@@ -11,10 +11,12 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useBoxStore } from "@/modules/rewards/store/useBoxStore";
-import { CURRENT_USER } from "../constants";
+import { showBoxToast, showLikeToast } from "@/lib/app-toast";
+import { CURRENT_USER, PEOPLE } from "../constants";
 import { useFeedStore } from "../store/useFeedStore";
 import type { FeedPost } from "../types";
 import { formatEngagement } from "../utils/formatEngagement";
+import { tokenizePostBody } from "../utils/postTokens";
 import { AuthorAvatar, VerifiedMark } from "./AuthorAvatar";
 import { QuoteComposer } from "./QuoteComposer";
 import { QuotedPostCard } from "./QuotedPostCard";
@@ -75,20 +77,25 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
             <DropdownMenuItem className="text-destructive">
               <Icon icon="solar:flag-linear" aria-hidden="true" /> Report moment
             </DropdownMenuItem>
+            {post.article && post.author.id === CURRENT_USER.id && isVerified && (
+              <DropdownMenuItem onClick={() => router.push(`/article/${post.id}/edit`)}>
+                <Icon icon="solar:pen-new-square-linear" aria-hidden="true" /> Edit article
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
 
-      {variant === "feed" ? (
+      {variant === "feed" && !post.poll ? (
         <Link href={`/post/${post.id}`} className="group/post block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Open moment by ${post.author.handle}`}>
-          <PostContent post={post} />
+          <PostContent post={post} variant={variant} />
         </Link>
-      ) : <PostContent post={post} />}
+      ) : <PostContent post={post} variant={variant} />}
       {post.quotedPost && <QuotedPostCard post={post.quotedPost} />}
 
       <footer className="mt-3 flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1 sm:gap-2">
-          <ActionButton icon={liked ? "solar:heart-bold" : "solar:heart-linear"} label={liked ? "Unlike" : "Like"} count={post.likes + (liked ? 1 : 0)} active={liked} onClick={() => toggleLike(post.id)} />
+          <ActionButton icon={liked ? "solar:heart-bold" : "solar:heart-linear"} label={liked ? "Unlike" : "Like"} count={post.likes + (liked ? 1 : 0)} active={liked} onClick={() => { toggleLike(post.id); if (!liked) showLikeToast(post.author); }} />
           <ActionButton icon="solar:chat-round-linear" label="View replies" count={post.replies + localReplyCount} onClick={() => router.push(`/post/${post.id}#reply-composer`)} />
           <RepostMenu post={post} onQuote={() => setQuoteOpen(true)} />
           <ActionButton icon="solar:plain-linear" label="Share" onClick={() => void shareMoment()} />
@@ -101,7 +108,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
             aria-label={rewardClaimed ? "Reward from this Moment claimed" : `Claim ${post.reward} Box`}
             onClick={() => {
               claimMoment(post.id, post.reward);
-              toast.success(`${post.reward} Box added`, { description: `Your balance is now ${new Intl.NumberFormat("en-US").format(boxBalance + post.reward)} Box.` });
+              showBoxToast(post.reward, `Your balance is now ${new Intl.NumberFormat("en-US").format(boxBalance + post.reward)} Box.`);
             }}
           >
             <Icon icon={rewardClaimed ? "solar:check-circle-bold" : "solar:box-bold"} className="size-4" aria-hidden="true" />
@@ -115,14 +122,18 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
   );
 }
 
-function PostContent({ post }: { post: FeedPost }) {
+function PostContent({ post, variant }: { post: FeedPost; variant: "feed" | "detail" }) {
   return (
     <>
-      <div className="mt-3 whitespace-pre-line text-base leading-6 text-foreground">
-        {post.body}
-        {post.tag && <p className="mt-3 text-primary">{post.tag}</p>}
-      </div>
+      {!post.article && (
+        <div className="mt-3 whitespace-pre-line text-base leading-6 text-foreground">
+          {tokenizePostBody(post.body).map((token, index) => token.kind === "text" ? <span key={`${token.value}-${index}`}>{token.value}</span> : <span key={`${token.value}-${index}`} className={cn("font-medium underline decoration-primary/40 underline-offset-2", token.kind === "mention" ? "text-primary" : "text-violet-300")}>{token.value}</span>)}
+          {post.tag && <p className="mt-3 text-primary">{post.tag}</p>}
+        </div>
+      )}
       {post.media && <PostMedia media={post.media} />}
+      {post.article && <ArticlePreview article={post.article} expanded={variant === "detail"} />}
+      {post.poll && <PollPreview post={post} />}
       {post.card && (
         <div className="mt-4 overflow-hidden rounded-xl border bg-gradient-to-br from-card via-card to-primary/10 p-5 sm:p-6">
           <div className="flex items-center gap-2 text-xs font-semibold"><Icon icon="solar:box-bold" className="size-4" aria-hidden="true" /> PayBox</div>
@@ -132,6 +143,43 @@ function PostContent({ post }: { post: FeedPost }) {
         </div>
       )}
     </>
+  );
+}
+
+function ArticlePreview({ article, expanded }: { article: NonNullable<FeedPost["article"]>; expanded: boolean }) {
+  return (
+    <section className="mt-4 overflow-hidden rounded-2xl border bg-gradient-to-br from-card via-card to-primary/10">
+      {article.banner?.image && <div className="h-32 border-b border-border/60 bg-cover bg-no-repeat sm:h-44" style={{ backgroundColor: article.banner.color, backgroundImage: `url(${article.banner.image})`, backgroundPosition: article.banner.position }} aria-label="Article banner" />}
+      <div className="p-5 sm:p-6">
+        <div className="flex items-center gap-2 text-xs font-semibold"><Icon icon="solar:box-bold" className="size-4 text-primary" aria-hidden="true" /> PayBox</div>
+        <p className="mt-8 text-sm text-primary">{article.eyebrow}</p>
+        <h3 className="mt-1 max-w-xl text-2xl font-medium leading-tight sm:text-3xl">{article.title}</h3>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{article.description}</p>
+        {expanded ? (
+          <div className="article-content mt-6 overflow-x-auto border-t border-border/70 pt-5 text-[15px] leading-7 text-foreground [&_a]:text-primary [&_a]:underline [&_blockquote]:my-4 [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_h2]:mt-6 [&_h2]:text-xl [&_h2]:font-semibold [&_img]:my-5 [&_img]:max-h-[32rem] [&_img]:w-full [&_img]:rounded-xl [&_img]:object-cover [&_li]:my-1 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-3 [&_strong]:font-semibold [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5" dangerouslySetInnerHTML={{ __html: article.contentHtml }} />
+        ) : (
+          <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-primary">Read article <Icon icon="solar:arrow-right-linear" className="size-4" aria-hidden="true" /></div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PollPreview({ post }: { post: FeedPost }) {
+  const votePoll = useFeedStore((state) => state.votePoll);
+  const [showVoters, setShowVoters] = useState(false);
+  const poll = post.poll!;
+  const totalVotes = poll.options.reduce((total, option) => total + option.voterIds.length, 0);
+  const votedOption = poll.options.find((option) => option.voterIds.includes(CURRENT_USER.id));
+  const authorById = new Map([CURRENT_USER, ...PEOPLE].map((author) => [author.id, author]));
+
+  return (
+    <section className="mt-4 rounded-2xl border bg-background/45 p-4 sm:p-5">
+      <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"><Icon icon="solar:chart-square-linear" className="size-5" aria-hidden="true" /></span><div><h3 className="font-semibold leading-6">{poll.question}</h3><p className="mt-1 text-xs text-muted-foreground">{totalVotes ? `${totalVotes} vote${totalVotes === 1 ? "" : "s"}` : "Be the first to vote"}</p></div></div>
+      <div className="mt-4 space-y-2">{poll.options.map((option) => { const percentage = totalVotes ? Math.round((option.voterIds.length / totalVotes) * 100) : 0; const selected = votedOption?.id === option.id; return <button key={option.id} type="button" onClick={() => votePoll(post.id, option.id, CURRENT_USER.id)} className="relative min-h-12 w-full overflow-hidden rounded-xl border border-border/80 p-3 text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-pressed={selected}><span className="absolute inset-y-0 left-0 bg-primary/10 transition-all" style={{ width: `${percentage}%` }} /><span className="relative flex items-center justify-between gap-3 text-sm"><span className="font-medium">{option.label}</span><span className={cn("tabular-nums text-xs", selected ? "font-semibold text-primary" : "text-muted-foreground")}>{percentage}%</span></span></button>; })}</div>
+      <div className="mt-4 flex items-center justify-between gap-3"><div className="flex items-center">{Array.from(new Set(poll.options.flatMap((option) => option.voterIds))).slice(0, 5).map((id, index) => { const author = authorById.get(id); return author ? <AuthorAvatar key={id} author={author} className={cn("size-7 border-2 border-card", index > 0 && "-ml-2")} /> : null; })}</div>{totalVotes > 0 && <Button type="button" variant="ghost" className="h-9 rounded-full px-3 text-xs text-primary" onClick={() => setShowVoters((value) => !value)}>{showVoters ? "Hide voters" : "View voters"}</Button>}</div>
+      {showVoters && <div className="mt-3 grid gap-2 border-t pt-3 sm:grid-cols-2">{poll.options.map((option) => <div key={option.id} className="rounded-xl bg-muted/30 p-3"><p className="text-xs font-semibold text-muted-foreground">{option.label}</p>{option.voterIds.length ? <div className="mt-2 space-y-2">{option.voterIds.map((id) => { const author = authorById.get(id); return author ? <div key={id} className="flex items-center gap-2"><AuthorAvatar author={author} className="size-7" /><span className="truncate text-xs font-medium">{author.name}</span><span className="truncate text-[11px] text-muted-foreground">@{author.handle}</span></div> : <p key={id} className="text-xs text-muted-foreground">Community voter</p>; })}</div> : <p className="mt-2 text-xs text-muted-foreground">No votes yet</p>}</div>)}</div>}
+    </section>
   );
 }
 
