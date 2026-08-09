@@ -2,11 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { ArrowUpRight, LockKeyhole } from "lucide-react";
 
 export function LoginView() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isStartingAuth, setIsStartingAuth] = useState(false);
+  const authError = searchParams.get("error");
+  const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL ?? "http://localhost:8787";
+
+  const errorMessage = authError === "auth_not_configured"
+    ? "Google sign-in belum dikonfigurasi di server."
+    : authError
+      ? "Sign-in belum selesai. Silakan coba lagi."
+      : null;
 
   return (
     <main className="min-h-dvh bg-background text-foreground lg:grid lg:grid-cols-[minmax(21rem,0.9fr)_minmax(34rem,1.1fr)]">
@@ -51,15 +61,17 @@ export function LoginView() {
             <p className="mt-4 text-base leading-6 text-muted-foreground">Sign in to keep your Moments moving.</p>
           </div>
 
+          {errorMessage && <div role="alert" className="mb-5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{errorMessage}</div>}
+
           <div className="space-y-4">
             <button type="button" disabled className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-primary/25 bg-primary/10 px-5 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed">
               <span>Continue with</span>
               <Image src="/paybox-lockup-white.svg" alt="PayBox" width={72} height={17} className="object-contain" />
               <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Coming soon</span>
             </button>
-            <button type="button" onClick={() => router.push("/onboarding")} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-              <GoogleIcon /> Continue with Google
-            </button>
+            <Link href={`${authApiUrl}/api/auth/google?next=/`} onClick={() => setIsStartingAuth(true)} aria-busy={isStartingAuth} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+              <GoogleIcon /> {isStartingAuth ? "Opening Google…" : "Continue with Google"}
+            </Link>
           </div>
           <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Sign in to continue to PayMoment.</p>
 
