@@ -1,6 +1,7 @@
 import { ArticleEditorPage } from "@/modules/feed/components/ArticleEditorPage";
+import { AuthGate } from "@/modules/auth/components/AuthGate";
 import { MomentShell } from "@/modules/shell";
 
 export default function NewArticlePage() {
-  return <MomentShell><ArticleEditorPage /></MomentShell>;
+  return <AuthGate><MomentShell><ArticleEditorPage /></MomentShell></AuthGate>;
 }

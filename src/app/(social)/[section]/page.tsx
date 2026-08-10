@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { AuthGate } from "@/modules/auth/components/AuthGate";
 import { PayMomentShell, sections, type ShellSection } from "@/modules/shell";
 
 export function generateStaticParams() {
@@ -8,5 +9,5 @@ export function generateStaticParams() {
 export default async function SectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;
   if (!sections.includes(section as ShellSection) || section === "for-you") notFound();
-  return <PayMomentShell section={section as ShellSection} />;
+  return <AuthGate><PayMomentShell section={section as ShellSection} /></AuthGate>;
 }

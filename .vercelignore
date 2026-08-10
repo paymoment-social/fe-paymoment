@@ -1,0 +1,8 @@
+.env
+.env.local
+.env.*.local
+node_modules
+.next
+.pnpm-store
+public/chrome-qa
+*.log
