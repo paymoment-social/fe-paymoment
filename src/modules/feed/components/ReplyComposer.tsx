@@ -50,6 +50,10 @@ export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyCo
     onSubmit: async ({ value }) => {
       const body = value.body.trim();
       if (!body && !mediaFile) return;
+      if (!currentUser.id) {
+        setSubmitError("Your session is still loading. Please try again in a moment.");
+        return;
+      }
       setSubmitError(undefined);
       try {
         const uploaded = mediaFile ? await uploadFeedMedia(mediaFile, "reply") : undefined;
@@ -57,6 +61,7 @@ export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyCo
         form.reset();
         setMedia(undefined);
         setMediaFile(undefined);
+        if (fileInput.current) fileInput.current.value = "";
         onSubmitted?.();
         toast.success("Reply posted");
       } catch (error) {
@@ -115,7 +120,7 @@ export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyCo
           {media && (
             <div className="relative mt-2 w-fit overflow-hidden rounded-xl border">
               <Image src={media} alt="Reply upload preview" width={180} height={120} unoptimized className="h-24 w-36 object-cover" />
-              <Button type="button" size="icon" variant="secondary" className="absolute right-1 top-1 size-10 rounded-full" aria-label="Remove image" onClick={() => { setMedia(undefined); setMediaFile(undefined); }}>
+              <Button type="button" size="icon" variant="secondary" className="absolute right-1 top-1 size-10 rounded-full" aria-label="Remove image" onClick={() => { setMedia(undefined); setMediaFile(undefined); if (fileInput.current) fileInput.current.value = ""; }}>
                 <Icon icon="solar:close-circle-bold" className="size-5" aria-hidden="true" />
               </Button>
             </div>
@@ -155,7 +160,7 @@ export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyCo
             </div>
             <form.Subscribe selector={(state) => [state.values.body, state.isSubmitting]}>
               {([body, submitting]) => (
-                <Button type="submit" className="h-10 rounded-full px-5" disabled={(!String(body).trim() && !mediaFile) || Boolean(submitting) || createReply.isPending} aria-busy={Boolean(submitting) || createReply.isPending}>
+                <Button type="submit" className="h-10 rounded-full px-5" disabled={!currentUser.id || (!String(body).trim() && !mediaFile) || Boolean(submitting) || createReply.isPending} aria-busy={Boolean(submitting) || createReply.isPending}>
                   {submitting || createReply.isPending ? "Replying..." : "Reply"}
                 </Button>
               )}

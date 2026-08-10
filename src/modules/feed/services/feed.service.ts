@@ -47,6 +47,24 @@ type ApiReply = {
 type PageResponse<T> = { data: T[]; meta: { next_cursor: string | null; has_more: boolean } };
 type DataResponse<T> = { data: T };
 
+function isApiProfile(value: unknown): value is ApiProfile {
+  if (!value || typeof value !== "object") return false;
+  const profile = value as Partial<ApiProfile>;
+  return typeof profile.id === "string"
+    && typeof profile.display_name === "string"
+    && Boolean(profile.entitlement && typeof profile.entitlement.verified === "boolean" && typeof profile.entitlement.points_balance === "number");
+}
+
+function isApiReply(value: unknown): value is ApiReply {
+  if (!value || typeof value !== "object") return false;
+  const reply = value as Partial<ApiReply>;
+  return typeof reply.id === "string"
+    && typeof reply.post_id === "string"
+    && typeof reply.body === "string"
+    && typeof reply.created_at === "string"
+    && isApiProfile(reply.author);
+}
+
 function relativeTime(value: string) {
   const milliseconds = Date.now() - new Date(value).getTime();
   if (milliseconds < 60_000) return "now";
@@ -174,12 +192,14 @@ export async function getReplies(postId: string, cursor?: string, parentId?: str
   if (cursor) query.set("cursor", cursor);
   if (parentId) query.set("parent_id", parentId);
   const response = await apiRequest<PageResponse<ApiReply>>(`/api/v1/posts/${postId}/replies?${query}`);
-  return { replies: (response.data ?? []).map(mapApiReply), nextCursor: response.meta.next_cursor };
+  return { replies: (response.data ?? []).filter(isApiReply).map(mapApiReply), nextCursor: response.meta.next_cursor };
 }
 
 export async function createReply(postId: string, input: { body: string; parentId?: string; mediaAssetIds?: string[] }) {
   const response = await apiRequest<DataResponse<{ reply: ApiReply }>>(`/api/v1/posts/${postId}/replies`, { method: "POST", headers: mutationHeaders(), body: JSON.stringify({ body: input.body, parent_id: input.parentId, media_asset_ids: input.mediaAssetIds ?? [] }) });
-  return mapApiReply(response.data.reply);
+  const reply = response.data?.reply;
+  if (!isApiReply(reply)) throw new Error("The server returned an incomplete reply. Refresh the Moment and try again.");
+  return mapApiReply(reply);
 }
 
 export async function setReplyLike(replyId: string, enabled: boolean) {

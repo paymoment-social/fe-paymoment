@@ -13,8 +13,11 @@ export function FeedView({ mode = "latest" }: { mode?: "latest" | "top" | "for_y
   const feed = useFeed(mode);
   const { setOpen } = useComposer();
   const visiblePosts = feed.data ?? [];
-  const newestVisiblePost = visiblePosts[0];
-  const newestVisibleAt = newestVisiblePost?.createdAtValue;
+  const newestVisibleAt = visiblePosts.reduce<string | undefined>((newest, post) => {
+    if (!post.createdAtValue || Number.isNaN(Date.parse(post.createdAtValue))) return newest;
+    if (!newest || Date.parse(post.createdAtValue) > Date.parse(newest)) return post.createdAtValue;
+    return newest;
+  }, undefined);
   const feedUpdates = useFeedUpdateCount(mode, newestVisibleAt);
   const newPostCount = feedUpdates.data ?? 0;
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -56,7 +59,7 @@ export function FeedView({ mode = "latest" }: { mode?: "latest" | "top" | "for_y
 
   return (
     <div className="space-y-3">
-      {newPostCount > 0 && <Button type="button" variant="outline" className="sticky top-14 z-10 mx-auto flex h-10 rounded-full border-primary/40 bg-background/95 px-4 text-xs text-primary shadow-sm backdrop-blur" disabled={feed.isFetching} aria-busy={feed.isFetching} onClick={() => void feed.refetch()}>{feed.isFetching ? "Refreshing..." : `Show ${newPostCount} new post${newPostCount === 1 ? "" : "s"}`}</Button>}
+      {newPostCount > 0 && <Button type="button" variant="outline" className="sticky top-14 z-10 mx-auto flex h-10 rounded-full border-primary/40 bg-background/95 px-4 text-xs text-primary shadow-sm backdrop-blur" disabled={feed.isRefreshingFromTop} aria-busy={feed.isRefreshingFromTop} onClick={() => void feed.refreshFromTop().then(() => window.scrollTo({ top: 0, behavior: "smooth" })).catch(() => undefined)}>{feed.isRefreshingFromTop ? "Refreshing..." : feed.refreshFromTopError ? "Try showing new posts again" : `Show ${newPostCount} new post${newPostCount === 1 ? "" : "s"}`}</Button>}
       <Composer compact />
       {feed.data.map((post) => <PostCard key={post.id} post={post} />)}
       {hasNextPage && <div ref={loadMoreRef} className="min-h-24 py-3" aria-live="polite">
