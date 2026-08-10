@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,7 +30,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [rewardClaimed, setRewardClaimed] = useState(false);
+  const [rewardClaimed, setRewardClaimed] = useState(Boolean(post.rewardClaimed));
   const liked = Boolean(post.liked);
   const bookmarked = Boolean(post.bookmarked);
   const following = post.author.relationship === "following";
@@ -39,6 +39,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
   const followMutation = useUserFollow();
   const deleteMutation = useDeleteMoment();
   const rewardMutation = useClaimMomentReward();
+  useEffect(() => setRewardClaimed(Boolean(post.rewardClaimed)), [post.id, post.rewardClaimed]);
   const isVerified = post.author.id === currentUser.id ? currentUser.verified : post.author.verified;
 
   async function shareMoment() {
@@ -102,18 +103,6 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
       ) : <PostContent post={post} variant={variant} />}
       {post.quotedPost && <QuotedPostCard post={post.quotedPost} />}
 
-      {post.isOwner && (
-        <section className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-card/70 to-card px-3 py-2.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary"><Icon icon="solar:box-bold-duotone" className="size-5" aria-hidden="true" /></span>
-            <div className="min-w-0"><p className="text-sm font-semibold">Moment reward</p><p className="truncate text-xs text-muted-foreground">Claim +10 Box for publishing this Moment</p></div>
-          </div>
-          <Button type="button" size="sm" variant={rewardClaimed ? "outline" : "default"} className="h-9 shrink-0" disabled={rewardClaimed || rewardMutation.isPending} onClick={() => rewardMutation.mutate(post.id, { onSuccess: (result) => { setRewardClaimed(true); toast.success(result.data.claimed ? "+10 Box claimed" : "Reward already claimed"); }, onError: (error) => toast.error(error.message) })}>
-            {rewardMutation.isPending ? "Claiming..." : rewardClaimed ? "Claimed" : "Claim"}
-          </Button>
-        </section>
-      )}
-
       <footer className="mt-3 flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1 sm:gap-2">
           <ActionButton icon={liked ? "solar:heart-bold" : "solar:heart-linear"} label={liked ? "Unlike" : "Like"} count={post.likes} active={liked} onClick={() => likeMutation.mutate({ postId: post.id, enabled: !liked }, { onError: (error) => toast.error(error.message) })} />
@@ -121,7 +110,13 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
           <RepostMenu post={post} onQuote={() => setQuoteOpen(true)} />
           <ActionButton icon="solar:plain-linear" label="Share" onClick={() => void shareMoment()} />
         </div>
-        <span className="text-xs text-muted-foreground">{post.views ? `${formatEngagement(post.views)} views` : ""}</span>
+        <div className="flex items-center gap-2">
+          {post.views ? <span className="hidden text-xs text-muted-foreground sm:inline">{formatEngagement(post.views)} views</span> : null}
+          {post.isOwner && <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 text-primary hover:bg-primary/10 hover:text-primary" disabled={rewardClaimed || rewardMutation.isPending} aria-label={rewardClaimed ? "Moment reward claimed" : "Claim 10 Box reward"} onClick={() => rewardMutation.mutate(post.id, { onSuccess: (result) => { setRewardClaimed(true); toast.success(result.data.claimed ? "+10 Box claimed" : "Reward already claimed"); }, onError: (error) => toast.error(error.message) })}>
+            <Icon icon={rewardClaimed ? "solar:check-circle-bold" : "solar:box-bold-duotone"} className="size-4" aria-hidden="true" />
+            <span className="font-mono text-xs tabular-nums">{rewardMutation.isPending ? "Claiming..." : rewardClaimed ? "Claimed" : "+10 BOX"}</span>
+          </Button>}
+        </div>
       </footer>
 
       <QuoteComposer post={post} open={quoteOpen} onOpenChange={setQuoteOpen} />

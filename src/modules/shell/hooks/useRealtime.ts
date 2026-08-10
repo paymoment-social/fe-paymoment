@@ -1,13 +1,26 @@
 "use client";
 
 import { useEffect } from "react";
+import { createElement } from "react";
 import { useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Icon } from "@iconify/react";
 import { API_URL } from "@/lib/api/client";
+import { AuthorAvatar } from "@/modules/feed";
 import { getNotifications } from "@/modules/notifications/services/notifications.service";
 import { NOTIFICATIONS_QUERY_KEY } from "@/modules/notifications/constants";
 import { setRealtimeConnection } from "../services/realtime.client";
+
+function showRealtimeNotification(item: Awaited<ReturnType<typeof getNotifications>>[number]) {
+  toast.custom((toastId) => createElement("button", {
+    type: "button",
+    onClick: () => { toast.dismiss(toastId); if (item.href) window.location.assign(item.href); },
+    className: "flex w-[min(24rem,calc(100vw-2rem))] items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left text-foreground shadow-xl shadow-black/20 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+  },
+  createElement("span", { className: "relative shrink-0" }, item.user ? createElement(AuthorAvatar, { author: item.user, className: "size-9" }) : createElement("span", { className: "grid size-9 place-items-center rounded-full bg-primary/15 text-primary" }, createElement(Icon, { icon: "solar:bell-bold", className: "size-4", "aria-hidden": true })), createElement("span", { className: "absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full border-2 border-card bg-primary text-primary-foreground" }, createElement(Icon, { icon: "solar:bolt-bold", className: "size-2.5", "aria-hidden": true }))),
+  createElement("span", { className: "min-w-0 flex-1" }, createElement("span", { className: "block truncate text-sm font-semibold" }, item.user?.name ?? "PayMoment"), createElement("span", { className: "block truncate text-xs text-muted-foreground" }, item.text))));
+}
 
 export function useRealtime() {
   const queryClient = useQueryClient();
@@ -48,7 +61,7 @@ export function useRealtime() {
               shownNotificationIds.current.add(notificationId);
               void queryClient.fetchQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "all"], queryFn: () => getNotifications("all"), staleTime: 0 }).then((items) => {
                 const item = items.find((notification) => notification.id === notificationId);
-                if (item) toast(`${item.user?.name ?? "Someone"} ${item.text}`);
+                if (item) showRealtimeNotification(item);
               }).catch(() => { /* The notification list will retry on focus. */ });
             }
           }

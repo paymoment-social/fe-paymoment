@@ -20,11 +20,11 @@ type ApiPost = {
   body: string;
   version: number;
   author: ApiProfile;
-  media: ApiMedia[];
+  media?: ApiMedia[] | null;
   counts: { likes: number; replies: number; reposts: number; bookmarks: number; views: number };
-  viewer: { liked: boolean; bookmarked: boolean; reposted: boolean };
+  viewer?: { liked?: boolean; bookmarked?: boolean; reposted?: boolean; reward_claimed?: boolean } | null;
   article: null | { title: string; eyebrow: string | null; description: string; content_html: string; banner_media_id: string | null; banner_color: string; banner_position: "left" | "center" | "right"; draft_version: number; status: "draft" | "published" };
-  poll: null | { question: string; status: "open" | "closed"; voter_visibility: "public" | "anonymous"; allow_vote_change: boolean; total_votes: number; ends_at: string | null; viewer_option_id: string | null; options: Array<{ id: string; label: string; position: number; vote_count: number }> };
+  poll: null | { question: string; status: "open" | "closed"; voter_visibility: "public" | "anonymous"; allow_vote_change: boolean; total_votes: number; ends_at: string | null; viewer_option_id: string | null; options?: Array<{ id: string; label: string; position: number; vote_count: number }> | null };
   quoted_post: ApiPost | null;
   created_at: string;
   is_owner: boolean;
@@ -36,7 +36,7 @@ type ApiReply = {
   parent_id: string | null;
   body: string;
   author: ApiProfile;
-  media: ApiMedia[];
+  media?: ApiMedia[] | null;
   like_count: number;
   viewer_liked: boolean;
   is_owner: boolean;
@@ -70,23 +70,28 @@ export function mapAuthor(profile: ApiProfile): FeedAuthor {
 }
 
 export function mapApiPost(post: ApiPost): FeedPost {
-  const banner = post.article?.banner_media_id ? post.media.find((media) => media.id === post.article?.banner_media_id) : undefined;
+  const media = post.media ?? [];
+  const viewer = post.viewer ?? {};
+  const pollOptions = post.poll?.options ?? [];
+  const banner = post.article?.banner_media_id ? media.find((item) => item.id === post.article?.banner_media_id) : undefined;
   return {
     id: post.id,
     author: mapAuthor(post.author),
     body: post.body,
     createdAt: relativeTime(post.created_at),
+    createdAtValue: post.created_at,
     likes: post.counts.likes,
     replies: post.counts.replies,
     reposts: post.counts.reposts,
     views: post.counts.views,
     reward: 0,
     version: post.version,
-    liked: post.viewer.liked,
-    bookmarked: post.viewer.bookmarked,
-    reposted: post.viewer.reposted,
+    liked: Boolean(viewer.liked),
+    bookmarked: Boolean(viewer.bookmarked),
+    reposted: Boolean(viewer.reposted),
+    rewardClaimed: Boolean(viewer.reward_claimed),
     isOwner: post.is_owner,
-    media: post.media.filter((media) => media.url && media.id !== post.article?.banner_media_id).map((media) => media.url!),
+    media: media.filter((item) => item.url && item.id !== post.article?.banner_media_id).map((item) => item.url!),
     article: post.article ? {
       eyebrow: post.article.eyebrow ?? "PayMoment article",
       title: post.article.title,
@@ -105,21 +110,28 @@ export function mapApiPost(post: ApiPost): FeedPost {
       totalVotes: post.poll.total_votes,
       viewerOptionId: post.poll.viewer_option_id ?? undefined,
       endsAt: post.poll.ends_at ?? undefined,
-      options: post.poll.options.map((option) => ({ id: option.id, label: option.label, voteCount: option.vote_count, voterIds: [] })),
+      options: pollOptions.map((option) => ({ id: option.id, label: option.label, voteCount: option.vote_count, voterIds: [] })),
     } : undefined,
     quotedPost: post.quoted_post ? mapApiPost(post.quoted_post) : undefined,
   };
 }
 
 function mapApiReply(reply: ApiReply): FeedReply {
-  return { id: reply.id, postId: reply.post_id, parentId: reply.parent_id ?? undefined, author: mapAuthor(reply.author), body: reply.body, createdAt: relativeTime(reply.created_at), likes: reply.like_count, media: reply.media[0]?.url ?? undefined, liked: reply.viewer_liked, isOwner: reply.is_owner };
+  const media = reply.media ?? [];
+  return { id: reply.id, postId: reply.post_id, parentId: reply.parent_id ?? undefined, author: mapAuthor(reply.author), body: reply.body, createdAt: relativeTime(reply.created_at), likes: reply.like_count, media: media[0]?.url ?? undefined, liked: Boolean(reply.viewer_liked), isOwner: Boolean(reply.is_owner) };
 }
 
 export async function getFeedPosts(cursor?: string, mode: "latest" | "top" | "for_you" = "latest", limit = 20): Promise<{ posts: FeedPost[]; nextCursor: string | null }> {
   const query = new URLSearchParams({ limit: String(limit), mode });
   if (cursor) query.set("cursor", cursor);
   const response = await apiRequest<PageResponse<ApiPost>>(`/api/v1/feed?${query}`);
-  return { posts: response.data.map(mapApiPost), nextCursor: response.meta.next_cursor };
+  return { posts: (response.data ?? []).map(mapApiPost), nextCursor: response.meta.next_cursor };
+}
+
+export async function getNewFeedPostCount(since: string) {
+  const query = new URLSearchParams({ since });
+  const response = await apiRequest<DataResponse<{ count: number }>>(`/api/v1/feed/updates?${query}`);
+  return response.data.count;
 }
 
 export async function getPost(postId: string) {
@@ -161,7 +173,7 @@ export async function getReplies(postId: string, cursor?: string, parentId?: str
   if (cursor) query.set("cursor", cursor);
   if (parentId) query.set("parent_id", parentId);
   const response = await apiRequest<PageResponse<ApiReply>>(`/api/v1/posts/${postId}/replies?${query}`);
-  return { replies: response.data.map(mapApiReply), nextCursor: response.meta.next_cursor };
+  return { replies: (response.data ?? []).map(mapApiReply), nextCursor: response.meta.next_cursor };
 }
 
 export async function createReply(postId: string, input: { body: string; parentId?: string; mediaAssetIds?: string[] }) {
@@ -180,7 +192,7 @@ export async function votePoll(postId: string, optionId?: string) {
 
 export async function getPollVoters(postId: string) {
   const response = await apiRequest<PageResponse<{ option_id: string; user: ApiProfile; voted_at: string }>>(`/api/v1/polls/${postId}/voters?limit=100`);
-  return response.data.map((voter) => ({ optionId: voter.option_id, user: mapAuthor(voter.user), votedAt: voter.voted_at }));
+  return (response.data ?? []).map((voter) => ({ optionId: voter.option_id, user: mapAuthor(voter.user), votedAt: voter.voted_at }));
 }
 
 export async function recordPostView(postId: string) {

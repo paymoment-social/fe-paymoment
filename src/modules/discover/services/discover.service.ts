@@ -9,7 +9,16 @@ export async function getDiscoverData(query: string, type: DiscoverFilter, curso
   const params = new URLSearchParams({ q: query, type, limit: "20" });
   if (cursor) params.set("cursor", cursor);
   const response = await apiRequest<{ data: { people: ApiProfile[]; moments: ApiPost[]; articles: ApiPost[]; topics: DiscoverPage["topics"]; page: { next_cursor: string | null; has_more: boolean } } }>(`/api/v1/discover?${params}`);
-  return { people: response.data.people.map(mapAuthor), moments: response.data.moments.map(mapApiPost), articles: response.data.articles.map(mapApiPost), topics: response.data.topics, nextCursor: response.data.page.next_cursor, hasMore: response.data.page.has_more };
+  const data = response.data;
+  const page = data.page ?? { next_cursor: null, has_more: false };
+  return {
+    people: (data.people ?? []).map(mapAuthor),
+    moments: (data.moments ?? []).map(mapApiPost),
+    articles: (data.articles ?? []).map(mapApiPost),
+    topics: data.topics ?? [],
+    nextCursor: page.next_cursor,
+    hasMore: page.has_more,
+  };
 }
 
 export type DiscoverSuggestion = { type: "person" | "topic"; value: string; label: string };

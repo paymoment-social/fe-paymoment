@@ -19,6 +19,7 @@ export type FeedPost = {
   tags?: string[];
   mentions?: string[];
   createdAt: string;
+  createdAtValue?: string;
   likes: number;
   replies: number;
   reposts: number;
@@ -28,6 +29,7 @@ export type FeedPost = {
   liked?: boolean;
   bookmarked?: boolean;
   reposted?: boolean;
+  rewardClaimed?: boolean;
   isOwner?: boolean;
   media?: string[];
   card?: { eyebrow: string; title: string; description: string };
