@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { ConnectAgentSetup } from "./ConnectAgentView";
 import { useCompleteOnboarding, useInterests, useUsernameAvailability } from "../hooks/useOnboarding";
+import { useSession } from "../hooks/useSession";
 
 type OnboardingData = {
   name: string;
@@ -21,11 +22,13 @@ type OnboardingData = {
 
 export function OnboardingView() {
   const router = useRouter();
+  const session = useSession();
   const [step, setStep] = useState(0);
   const [data, setData] = useState<OnboardingData>({ name: "", username: "", birthDate: "", bio: "", interests: [], acceptedTerms: false, acceptedPrivacy: false });
   const [debouncedUsername, setDebouncedUsername] = useState("");
   const interests = useInterests();
   const onboarding = useCompleteOnboarding();
+  const displayStep = session.data?.onboarding_completed ? 3 : step;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedUsername(data.username), 350);
@@ -77,17 +80,18 @@ export function OnboardingView() {
             <Image src="/payboxlogo.png" alt="" width={32} height={32} className="object-contain" priority />
             <span className="font-semibold tracking-[-0.04em]">PayMoment</span>
           </Link>
-          <span className="text-xs text-muted-foreground">Step {step + 1} of 4</span>
+          <span className="text-xs text-muted-foreground">Step {displayStep + 1} of 4</span>
         </header>
 
-        <div className="mt-6 flex gap-2" aria-label={`Onboarding progress: step ${step + 1} of 4`}>
-          {[0, 1, 2, 3].map((item) => <span key={item} className={`h-1.5 flex-1 rounded-full transition-colors ${item <= step ? "bg-primary" : "bg-secondary"}`} />)}
+        <div className="mt-6 flex gap-2" aria-label={`Onboarding progress: step ${displayStep + 1} of 4`}>
+          {[0, 1, 2, 3].map((item) => <span key={item} className={`h-1.5 flex-1 rounded-full transition-colors ${item <= displayStep ? "bg-primary" : "bg-secondary"}`} />)}
         </div>
 
         <section className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center py-8">
-          {step === 0 && <StepProfile data={data} update={update} usernameError={effectiveUsernameError} checkingUsername={availability.isFetching} />}
-          {step === 1 && <StepBirthday birthDate={data.birthDate} update={update} />}
-          {step === 2 && <StepInterests data={data} update={update} toggleInterest={toggleInterest} interests={interests.data ?? []} loading={interests.isLoading} error={interests.error?.message} retry={() => void interests.refetch()} />}
+          {displayStep === 0 && <StepProfile data={data} update={update} usernameError={effectiveUsernameError} checkingUsername={availability.isFetching} />}
+          {displayStep === 1 && <StepBirthday birthDate={data.birthDate} update={update} />}
+          {displayStep === 2 && <StepInterests data={data} update={update} toggleInterest={toggleInterest} interests={interests.data ?? []} loading={interests.isLoading} error={interests.error?.message} retry={() => void interests.refetch()} />}
+          {session.data?.onboarding_completed && step < 3 && <section className="rounded-2xl border border-border bg-card/70 p-5 sm:p-7"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">PayBox · Setup</p><h1 className="text-3xl font-semibold tracking-[-0.065em] sm:text-4xl">Connect your agent</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Add PayMoment to ChatGPT or Claude. Choose an agent to see the setup instructions.</p><ConnectAgentSetup onSkip={() => router.replace("/")} /></section>}
           {step === 3 && <section className="rounded-2xl border border-border bg-card/70 p-5 sm:p-7"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">PayBox · Setup</p><h1 className="text-3xl font-semibold tracking-[-0.065em] sm:text-4xl">Connect your agent</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Add PayMoment to ChatGPT or Claude. Choose an agent to see the setup instructions.</p><ConnectAgentSetup onSkip={() => router.replace("/")} /></section>}
 
           {onboarding.error && <div role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{onboarding.error.message}</div>}
