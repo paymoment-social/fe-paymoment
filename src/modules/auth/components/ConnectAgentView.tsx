@@ -64,7 +64,7 @@ export function ConnectAgentSetup({ onSkip }: { onSkip?: () => void }) {
       </Dialog>
       <Dialog>
         <DialogTrigger render={<Button type="button" className="min-h-12 w-full justify-center gap-2.5 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("claude")} />}>
-          <Icon icon="simple-icons:anthropic" className="size-5 text-[#D97757]" aria-hidden="true" /> <span>Connect Claude</span>
+          <Icon icon="thesvg-color:claude" className="size-5" aria-hidden="true" /> <span>Connect Claude</span>
         </DialogTrigger>
         <McpInstructions provider={provider} />
       </Dialog>
