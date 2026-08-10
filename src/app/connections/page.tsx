@@ -1,6 +1,5 @@
-import { AuthGate } from "@/modules/auth/components/AuthGate";
-import { AgentConnectionsView } from "@/modules/auth/components/AgentConnectionsView";
+import { PayMomentShell } from "@/modules/shell/components/PayMomentShell";
 
 export default function ConnectionsPage() {
-  return <AuthGate><AgentConnectionsView /></AuthGate>;
+  return <PayMomentShell section="connections" />;
 }

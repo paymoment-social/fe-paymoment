@@ -115,8 +115,8 @@ function mapApiReply(reply: ApiReply): FeedReply {
   return { id: reply.id, postId: reply.post_id, parentId: reply.parent_id ?? undefined, author: mapAuthor(reply.author), body: reply.body, createdAt: relativeTime(reply.created_at), likes: reply.like_count, media: reply.media[0]?.url ?? undefined, liked: reply.viewer_liked, isOwner: reply.is_owner };
 }
 
-export async function getFeedPosts(cursor?: string, mode: "latest" | "top" | "for_you" = "latest"): Promise<{ posts: FeedPost[]; nextCursor: string | null }> {
-  const query = new URLSearchParams({ limit: "20", mode });
+export async function getFeedPosts(cursor?: string, mode: "latest" | "top" | "for_you" = "latest", limit = 20): Promise<{ posts: FeedPost[]; nextCursor: string | null }> {
+  const query = new URLSearchParams({ limit: String(limit), mode });
   if (cursor) query.set("cursor", cursor);
   const response = await apiRequest<PageResponse<ApiPost>>(`/api/v1/feed?${query}`);
   return { posts: response.data.map(mapApiPost), nextCursor: response.meta.next_cursor };

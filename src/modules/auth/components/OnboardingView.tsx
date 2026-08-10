@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
+import { ConnectAgentSetup } from "./ConnectAgentView";
 import { useCompleteOnboarding, useInterests, useUsernameAvailability } from "../hooks/useOnboarding";
 
 type OnboardingData = {
@@ -50,7 +51,7 @@ export function OnboardingView() {
           ? availability.error.fields.username ?? availability.error.message
           : "";
 
-  const canContinue = step === 0 ? Boolean(data.name.trim() && data.username && !effectiveUsernameError && availability.data?.available) : step === 1 ? Boolean(data.birthDate) : data.acceptedTerms && data.acceptedPrivacy;
+  const canContinue = step === 0 ? Boolean(data.name.trim() && data.username && !effectiveUsernameError && availability.data?.available) : step === 1 ? Boolean(data.birthDate) : step === 2 ? data.acceptedTerms && data.acceptedPrivacy : false;
 
   const update = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) => {
     setData((current) => ({ ...current, [key]: value }));
@@ -60,7 +61,7 @@ export function OnboardingView() {
     if (step < 2) setStep((current) => current + 1);
     else {
       await onboarding.mutateAsync({ displayName: data.name.trim(), username: data.username, birthDate: data.birthDate, bio: data.bio.trim(), interests: data.interests });
-      router.replace("/connect-agent");
+      setStep(3);
     }
   };
 
@@ -76,28 +77,29 @@ export function OnboardingView() {
             <Image src="/payboxlogo.png" alt="" width={32} height={32} className="object-contain" priority />
             <span className="font-semibold tracking-[-0.04em]">PayMoment</span>
           </Link>
-          <span className="text-xs text-muted-foreground">Step {step + 1} of 3</span>
+          <span className="text-xs text-muted-foreground">Step {step + 1} of 4</span>
         </header>
 
-        <div className="mt-6 flex gap-2" aria-label={`Onboarding progress: step ${step + 1} of 3`}>
-          {[0, 1, 2].map((item) => <span key={item} className={`h-1.5 flex-1 rounded-full transition-colors ${item <= step ? "bg-primary" : "bg-secondary"}`} />)}
+        <div className="mt-6 flex gap-2" aria-label={`Onboarding progress: step ${step + 1} of 4`}>
+          {[0, 1, 2, 3].map((item) => <span key={item} className={`h-1.5 flex-1 rounded-full transition-colors ${item <= step ? "bg-primary" : "bg-secondary"}`} />)}
         </div>
 
         <section className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center py-8">
           {step === 0 && <StepProfile data={data} update={update} usernameError={effectiveUsernameError} checkingUsername={availability.isFetching} />}
           {step === 1 && <StepBirthday birthDate={data.birthDate} update={update} />}
           {step === 2 && <StepInterests data={data} update={update} toggleInterest={toggleInterest} interests={interests.data ?? []} loading={interests.isLoading} error={interests.error?.message} retry={() => void interests.refetch()} />}
+          {step === 3 && <section className="rounded-2xl border border-border bg-card/70 p-5 sm:p-7"><p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">PayBox · Setup</p><h1 className="text-3xl font-semibold tracking-[-0.065em] sm:text-4xl">Connect your agent</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">Add PayMoment to ChatGPT or Claude. Choose an agent to see the setup instructions.</p><ConnectAgentSetup onSkip={() => router.replace("/")} /></section>}
 
           {onboarding.error && <div role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{onboarding.error.message}</div>}
 
-          <div className="mt-10 flex items-center justify-between gap-3">
+          {step < 3 && <div className="mt-10 flex items-center justify-between gap-3">
             <button type="button" onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0} className="flex min-h-12 items-center gap-2 rounded-xl px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-0">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Back
             </button>
             <button type="button" onClick={() => void continueOnboarding()} disabled={!canContinue || onboarding.isPending} aria-busy={onboarding.isPending} className="flex min-h-12 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-45">
               {onboarding.isPending ? "Saving..." : step === 2 ? "Finish setup" : "Continue"} {step === 2 ? <Check className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
             </button>
-          </div>
+          </div>}
         </section>
 
         <p className="text-center text-xs text-muted-foreground">You can update these details later from your profile.</p>

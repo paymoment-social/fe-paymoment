@@ -5,7 +5,7 @@ import { useNotificationsContext } from "../context/NotificationsContext";
 import { getNotificationPreferences, getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, updateNotificationPreferences } from "../services/notifications.service";
 import type { NotificationPreferences, PayNotification } from "../types";
 
-export function useNotifications() { const { filter } = useNotificationsContext(); return useQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, filter], queryFn: () => getNotifications(filter), staleTime: 15_000 }); }
+export function useNotifications() { const { filter } = useNotificationsContext(); return useQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, filter], queryFn: () => getNotifications(filter), staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true }); }
 export function useNotificationRead() {
   const client = useQueryClient();
   return useMutation({
@@ -35,7 +35,7 @@ export function useNotificationsReadAll() {
   });
 }
 export function useNotificationPreferences() { return useQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "preferences"], queryFn: getNotificationPreferences }); }
-export function useUnreadNotificationCount() { return useQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "unread-count"], queryFn: getUnreadNotificationCount, staleTime: 15_000 }); }
+export function useUnreadNotificationCount() { return useQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "unread-count"], queryFn: getUnreadNotificationCount, staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true }); }
 export function useUpdateNotificationPreferences() {
   const client = useQueryClient();
   const key = [...NOTIFICATIONS_QUERY_KEY, "preferences"];

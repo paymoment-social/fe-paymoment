@@ -62,7 +62,8 @@ export function RewardsView() {
           {rewards.data?.catalog.map((reward) => {
             const isVerification = reward.slug === "verified-badge";
             const unlocked = isVerification && verified;
-            const canClaim = !isVerification && reward.available && reward.cost <= balance;
+            const isCampaign = reward.slug === "early-access-1000";
+            const canClaim = isCampaign ? reward.available && !reward.claimed : !isVerification && reward.available && reward.cost <= balance;
             const remaining = Math.max(VERIFIED_BOX_THRESHOLD - balance, 0);
 
             return (
@@ -72,7 +73,7 @@ export function RewardsView() {
                 transition={{ duration: reduceMotion ? 0 : 0.15, ease: "easeOut" }}
                 className="relative overflow-hidden rounded-xl border bg-card/55 p-5"
               >
-                {isVerification && <div className="pointer-events-none absolute right-0 top-0 size-28 rounded-full bg-primary/15 blur-3xl" />}
+                {(isVerification || isCampaign) && <div className="pointer-events-none absolute right-0 top-0 size-28 rounded-full bg-primary/15 blur-3xl" />}
                 <div className="relative grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
                   <Icon icon={reward.icon} className="size-6" aria-hidden="true" />
                 </div>
@@ -83,9 +84,14 @@ export function RewardsView() {
                 <p className="relative mt-1 min-h-10 text-sm leading-5 text-muted-foreground">{reward.description}</p>
                 <div className="relative mt-5 flex items-center justify-between gap-3">
                   <span className="font-mono text-sm text-primary tabular-nums">
-                    {isVerification ? `Unlocks at ${VERIFIED_BOX_THRESHOLD} Box` : `${formatBox(reward.cost)} Box`}
+                    {isCampaign ? `${reward.claimedCount}/${reward.campaignCapacity ?? 1_000} claimed · ${reward.inventory ?? 0} left` : isVerification ? `Unlocks at ${VERIFIED_BOX_THRESHOLD} Box` : `${formatBox(reward.cost)} Box`}
                   </span>
-                  {isVerification ? (
+                  {isCampaign ? (
+                    <Button variant={canClaim ? "default" : "outline"} className="h-10" onClick={() => redeem.mutate(reward.id, { onSuccess: () => toast.success("10,000 Box added — you are verified"), onError: (error) => toast.error(error.message) })} disabled={!canClaim || redeem.isPending}>
+                      <Icon icon={reward.claimed ? "solar:verified-check-bold" : "solar:gift-bold"} className="size-4" aria-hidden="true" />
+                      {redeem.isPending ? "Claiming..." : reward.claimed ? "Claimed" : reward.available ? "Claim 10,000" : "Campaign full"}
+                    </Button>
+                  ) : isVerification ? (
                     <Button variant="outline" className="h-10 rounded-full border-primary/25 bg-primary/10 text-primary" disabled>
                       <Icon icon={unlocked ? "solar:verified-check-bold" : "solar:lock-keyhole-linear"} className="size-4" aria-hidden="true" />
                       {unlocked ? "Verified" : `${remaining} Box left`}

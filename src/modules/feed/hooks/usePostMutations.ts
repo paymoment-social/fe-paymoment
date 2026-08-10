@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
 import { FEED_QUERY_KEY } from "../constants";
 import { createPost, createReply, deletePost, setPostReaction, setReplyLike, setUserFollow, votePoll } from "../services/feed.service";
 import type { FeedPost, FeedReply } from "../types";
@@ -59,13 +60,31 @@ export function usePostReaction(type: "like" | "bookmark" | "repost") {
 
 export function useCreateReply(postId: string, parentId?: string) {
   const queryClient = useQueryClient();
+  const currentUser = useCurrentUser();
   return useMutation({
     mutationFn: ({ body, mediaAssetIds }: { body: string; mediaAssetIds?: string[] }) => createReply(postId, { body, parentId, mediaAssetIds }),
-    onSuccess: (reply) => {
-      queryClient.setQueryData<InfiniteData<{ replies: FeedReply[]; nextCursor: string | null }>>(repliesQueryKey(postId, parentId), (current) => current ? { ...current, pages: current.pages.map((page, index) => index === 0 ? { ...page, replies: [...page.replies, reply] } : page) } : current);
+    onMutate: async ({ body }) => {
+      const key = repliesQueryKey(postId, parentId);
+      await Promise.all([queryClient.cancelQueries({ queryKey: key }), queryClient.cancelQueries({ queryKey: FEED_QUERY_KEY }), queryClient.cancelQueries({ queryKey: postQueryKey(postId) })]);
+      const previousReplies = queryClient.getQueryData(key);
+      const feedSnapshots = queryClient.getQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY });
+      const postSnapshot = queryClient.getQueryData<FeedPost>(postQueryKey(postId));
+      const pendingId = `pending-${crypto.randomUUID()}`;
+      const optimistic: FeedReply = { id: pendingId, postId, parentId, author: currentUser, body, createdAt: new Date().toISOString(), likes: 0, isOwner: true };
+      queryClient.setQueryData<InfiniteData<{ replies: FeedReply[]; nextCursor: string | null }>>(key, (current) => current ? { ...current, pages: current.pages.map((page, index) => index === 0 ? { ...page, replies: [...page.replies, optimistic] } : page) } : current);
       updatePostCaches(queryClient, postId, (post) => ({ ...post, replies: post.replies + 1 }));
+      return { key, previousReplies, feedSnapshots, postSnapshot, pendingId };
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: repliesQueryKey(postId, parentId) }),
+    onError: (_error, _variables, context) => {
+      if (!context) return;
+      queryClient.setQueryData(context.key, context.previousReplies);
+      context.feedSnapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
+      if (context.postSnapshot) queryClient.setQueryData(postQueryKey(postId), context.postSnapshot);
+    },
+    onSuccess: (reply, _variables, context) => {
+      queryClient.setQueryData<InfiniteData<{ replies: FeedReply[]; nextCursor: string | null }>>(repliesQueryKey(postId, parentId), (current) => current ? { ...current, pages: current.pages.map((page, index) => index === 0 ? { ...page, replies: page.replies.map((item) => item.id === context?.pendingId ? reply : item) } : page) } : current);
+    },
+    onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: repliesQueryKey(postId, parentId) }), queryClient.invalidateQueries({ queryKey: postQueryKey(postId) })]),
   });
 }
 

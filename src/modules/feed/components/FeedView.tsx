@@ -3,14 +3,18 @@
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useFeed } from "../hooks/useFeed";
+import { useFeed, useFeedHead } from "../hooks/useFeed";
 import { useComposer } from "../context/ComposerContext";
 import { Composer } from "./Composer";
 import { PostCard } from "./PostCard";
 
 export function FeedView({ mode = "latest" }: { mode?: "latest" | "top" | "for_you" }) {
   const feed = useFeed(mode);
+  const feedHead = useFeedHead(mode);
   const { setOpen } = useComposer();
+  const visiblePostIds = new Set(feed.data?.map((post) => post.id) ?? []);
+  const firstVisibleIndex = feedHead.data?.posts.findIndex((post) => visiblePostIds.has(post.id)) ?? -1;
+  const newPostCount = firstVisibleIndex > 0 ? feedHead.data!.posts.slice(0, firstVisibleIndex).filter((post) => !visiblePostIds.has(post.id)).length : 0;
 
   if (feed.isLoading) return <FeedSkeleton />;
   if (feed.isError) {
@@ -35,6 +39,7 @@ export function FeedView({ mode = "latest" }: { mode?: "latest" | "top" | "for_y
 
   return (
     <div className="space-y-3">
+      {newPostCount > 0 && <Button type="button" variant="outline" className="sticky top-14 z-10 mx-auto flex h-10 rounded-full border-primary/40 bg-background/95 px-4 text-xs text-primary shadow-sm backdrop-blur" disabled={feed.isFetching} aria-busy={feed.isFetching} onClick={async () => { await feed.refetch(); await feedHead.refetch(); }}>{feed.isFetching ? "Refreshing..." : `Show ${newPostCount} new post${newPostCount === 1 ? "" : "s"}`}</Button>}
       <Composer compact />
       {feed.data.map((post) => <PostCard key={post.id} post={post} />)}
       {feed.hasNextPage && <div className="flex justify-center py-3"><Button variant="outline" className="h-10 rounded-full" disabled={feed.isFetchingNextPage} onClick={() => void feed.fetchNextPage()}>{feed.isFetchingNextPage ? "Loading moments..." : "Load more moments"}</Button></div>}

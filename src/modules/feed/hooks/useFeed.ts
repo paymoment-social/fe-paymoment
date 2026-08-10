@@ -12,8 +12,22 @@ export function useFeed(mode: "latest" | "top" | "for_you" = "latest") {
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => getFeedPosts(pageParam, mode),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
   return { ...query, data: query.data?.pages.flatMap((page) => page.posts) };
+}
+
+export function useFeedHead(mode: "latest" | "top" | "for_you" = "latest") {
+  return useQuery({
+    queryKey: [...FEED_QUERY_KEY, "head", mode],
+    queryFn: () => getFeedPosts(undefined, mode, 100),
+    staleTime: 0,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: true,
+  });
 }
 
 export function usePost(postId: string) {

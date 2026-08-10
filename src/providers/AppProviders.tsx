@@ -14,8 +14,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 30_000,
-            refetchOnWindowFocus: false,
+            staleTime: 0,
+            refetchOnWindowFocus: "always",
+            refetchOnReconnect: true,
             retry: (failureCount, error) => !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failureCount < 2,
           },
           mutations: { retry: false },

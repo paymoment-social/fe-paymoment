@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, ArrowUpRight, Check, Clipboard, ExternalLink, Sparkles } from "lucide-react";
+import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAgentConnections, useRevokeAgentConnection } from "../hooks/useAgentConnections";
 
 const MCP_URL = (process.env.NEXT_PUBLIC_MCP_URL ?? "https://mcp.paymom3nts.xyz/mcp").replace(/\/$/, "");
+const SETUP_VIDEO_URL = process.env.NEXT_PUBLIC_AGENT_SETUP_VIDEO_URL?.trim();
 
 export function ConnectAgentView() {
-  const [provider, setProvider] = useState<"chatgpt" | "claude">("chatgpt");
   const connections = useAgentConnections();
 
   return (
@@ -32,24 +33,7 @@ export function ConnectAgentView() {
               <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">PayBox · Setup</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.065em] sm:text-4xl">Connect your agent</h1><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Bring PayBox into the tools you already use. Connect once, then authorize access securely.</p></div>
             </div>
 
-            <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
-            <Dialog>
-              <DialogTrigger render={<Button type="button" className="min-h-12 w-full justify-center gap-2.5 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("chatgpt")} />}>
-                <ChatGptMark /> <span>Connect ChatGPT</span>
-              </DialogTrigger>
-              <McpInstructions provider={provider} />
-            </Dialog>
-            <Dialog>
-              <DialogTrigger render={<Button type="button" className="min-h-12 w-full justify-center gap-2.5 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("claude")} />}>
-                <ClaudeMark /> <span>Connect Claude</span>
-              </DialogTrigger>
-              <McpInstructions provider={provider} />
-            </Dialog>
-            </div>
-
-            <Link href="/" className="mx-auto mt-3 inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              Skip for now <ArrowUpRight className="size-3.5" aria-hidden="true" />
-            </Link>
+            <ConnectAgentSetup />
           </div>
         </section>
 
@@ -66,6 +50,27 @@ export function ConnectAgentView() {
       </div>
     </main>
   );
+}
+
+export function ConnectAgentSetup({ onSkip }: { onSkip?: () => void }) {
+  const [provider, setProvider] = useState<"chatgpt" | "claude">("chatgpt");
+  return <>
+    <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
+      <Dialog>
+        <DialogTrigger render={<Button type="button" className="min-h-12 w-full justify-center gap-2.5 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("chatgpt")} />}>
+          <Icon icon="simple-icons:openai" className="size-5" aria-hidden="true" /> <span>Connect ChatGPT</span>
+        </DialogTrigger>
+        <McpInstructions provider={provider} />
+      </Dialog>
+      <Dialog>
+        <DialogTrigger render={<Button type="button" className="min-h-12 w-full justify-center gap-2.5 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("claude")} />}>
+          <Icon icon="simple-icons:anthropic" className="size-5 text-[#D97757]" aria-hidden="true" /> <span>Connect Claude</span>
+        </DialogTrigger>
+        <McpInstructions provider={provider} />
+      </Dialog>
+    </div>
+    {onSkip ? <button type="button" onClick={onSkip} className="mx-auto mt-3 inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Skip — you can connect anytime from the dashboard <ArrowUpRight className="size-3.5" aria-hidden="true" /></button> : <Link href="/" className="mx-auto mt-3 inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Skip for now <ArrowUpRight className="size-3.5" aria-hidden="true" /></Link>}
+  </>;
 }
 
 function AgentCard({ connection }: { connection: import("../services/agent.service").AgentConnection }) {
@@ -105,7 +110,7 @@ function McpInstructions({ provider }: { provider: "chatgpt" | "claude" }) {
         <InstructionStep number="3" title="Add a custom connector"><p className="mt-1 text-muted-foreground">Open the connector, plugin, or integrations settings, paste the copied URL, and choose OAuth when asked.</p></InstructionStep>
         <InstructionStep number="4" title="Save and authorize"><p className="mt-1 text-muted-foreground">Save the connector, connect it, and complete the PayMoment authorization screen.</p></InstructionStep>
       </ol>
-      <div className="hidden min-h-48 rounded-xl border border-border bg-background p-4 lg:block"><div className="flex h-full items-center justify-center rounded-lg bg-secondary/60 text-center text-xs text-muted-foreground">Your agent setup<br />will appear here</div></div>
+      <div className="hidden min-h-48 overflow-hidden rounded-xl border border-border bg-background p-2 lg:block">{SETUP_VIDEO_URL ? <iframe title={`${isChatGpt ? "ChatGPT" : "Claude"} PayMoment setup video`} src={SETUP_VIDEO_URL} className="h-full min-h-48 w-full rounded-lg" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <div className="flex h-full min-h-48 items-center justify-center rounded-lg bg-secondary/60 px-5 text-center text-xs text-muted-foreground">Setup video will appear here<br /><span className="mt-1 block text-[10px]">Set NEXT_PUBLIC_AGENT_SETUP_VIDEO_URL when ready</span></div>}</div>
     </div>
     <DialogFooter className="border-border bg-background/40"><DialogClose render={<Button type="button" variant="outline" />}>Done</DialogClose></DialogFooter>
   </DialogContent>;
