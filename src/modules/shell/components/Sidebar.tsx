@@ -65,6 +65,7 @@ export function Sidebar({ active }: { active: ShellSection }) {
           <DropdownMenuContent side="right" align="end" className="w-60 p-1.5">
             <DropdownMenuItem className="min-h-10 px-3"><Icon icon="solar:pallete-2-linear" aria-hidden="true" />Appearance<Icon icon="solar:alt-arrow-right-linear" className="ml-auto size-4" aria-hidden="true" /></DropdownMenuItem>
             <DropdownMenuItem className="min-h-10 px-3" onClick={() => setSettingsOpen(true)}><Icon icon="solar:settings-linear" aria-hidden="true" />Settings</DropdownMenuItem>
+            <DropdownMenuItem render={<Link href="/connections" />} className="min-h-10 px-3"><Icon icon="solar:link-linear" aria-hidden="true" />Agent connections</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<Link href="/likes" />} className="min-h-10 px-3"><Icon icon="solar:heart-linear" aria-hidden="true" />Liked</DropdownMenuItem>
             <DropdownMenuSeparator />

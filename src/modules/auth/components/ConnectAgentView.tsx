@@ -14,10 +14,10 @@ export function ConnectAgentView() {
   const connections = useAgentConnections();
 
   return (
-    <main className="min-h-dvh bg-background px-5 py-6 text-foreground sm:px-8 lg:px-10">
-      <div className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-2xl flex-col">
+    <main className="min-h-dvh bg-background px-4 py-4 text-foreground sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-3xl">
         <header className="flex items-center justify-between">
-          <Link href="/onboarding" className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Link href="/" className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <ArrowLeft className="size-4" aria-hidden="true" /> Back
           </Link>
           <div className="flex items-center gap-1.5" aria-label="Setup progress">
@@ -25,38 +25,38 @@ export function ConnectAgentView() {
           </div>
         </header>
 
-        <section className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-12">
-          <div className="mb-8 flex size-12 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
-            <Sparkles className="size-6" aria-hidden="true" />
-          </div>
-          <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-primary">PayBox · Setup</p>
-          <h1 className="text-4xl font-semibold tracking-[-0.065em] sm:text-5xl">Connect your agent</h1>
-          <p className="mt-4 max-w-lg text-base leading-7 text-muted-foreground">Add PayBox to ChatGPT or Claude — one tap, sign in once. This is where everything you just set up starts paying off.</p>
+        <section className="mx-auto max-w-2xl py-10 sm:py-14">
+          <div className="rounded-2xl border border-border bg-card/70 p-5 shadow-[0_18px_60px_color-mix(in_oklab,var(--background)_55%,transparent)] sm:p-7">
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary"><Sparkles className="size-4" aria-hidden="true" /></div>
+              <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">PayBox · Setup</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.065em] sm:text-4xl">Connect your agent</h1><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Bring PayBox into the tools you already use. Connect once, then authorize access securely.</p></div>
+            </div>
 
-          <div className="mt-8 space-y-3">
+            <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
             <Dialog>
-              <DialogTrigger render={<Button type="button" className="min-h-14 w-full justify-center gap-3 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("chatgpt")} />}>
-                <ChatGptMark /> Start with ChatGPT
+              <DialogTrigger render={<Button type="button" className="min-h-12 w-full justify-center gap-2.5 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("chatgpt")} />}>
+                <ChatGptMark /> <span>Connect ChatGPT</span>
               </DialogTrigger>
               <McpInstructions provider={provider} />
             </Dialog>
             <Dialog>
-              <DialogTrigger render={<Button type="button" className="min-h-14 w-full justify-center gap-3 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("claude")} />}>
-                <ClaudeMark /> Start with Claude
+              <DialogTrigger render={<Button type="button" className="min-h-12 w-full justify-center gap-2.5 rounded-xl bg-foreground text-background hover:bg-foreground/90" onClick={() => setProvider("claude")} />}>
+                <ClaudeMark /> <span>Connect Claude</span>
               </DialogTrigger>
               <McpInstructions provider={provider} />
             </Dialog>
-          </div>
+            </div>
 
-          <Link href="/" className="mx-auto mt-5 inline-flex min-h-10 items-center gap-1 rounded-lg px-3 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            Skip — you can connect anytime from the dashboard <ArrowUpRight className="size-3.5" aria-hidden="true" />
-          </Link>
+            <Link href="/" className="mx-auto mt-3 inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              Skip for now <ArrowUpRight className="size-3.5" aria-hidden="true" />
+            </Link>
+          </div>
         </section>
 
-        <section className="border-t border-border py-8">
+        <section className="border-t border-border py-5">
           <div className="flex items-center justify-between gap-4">
             <div><h2 className="text-sm font-semibold">Your agents <span className="font-normal text-muted-foreground">{connections.data ? `${connections.data.filter((item) => item.status === "active").length} active` : ""}</span></h2><p className="mt-1 text-xs text-muted-foreground">Connections are saved securely to your PayMoment account.</p></div>
-            <span className="rounded-full border border-border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">MCP</span>
+            <span className="rounded-full border border-border px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">MCP</span>
           </div>
           {connections.isLoading && <div className="mt-4 h-24 animate-pulse rounded-xl bg-secondary" aria-label="Loading agents" />}
           {connections.isError && <div role="alert" className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><p>Couldn&apos;t load your agents.</p><button type="button" onClick={() => void connections.refetch()} className="mt-2 min-h-10 rounded-lg px-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Try again</button></div>}
@@ -115,5 +115,10 @@ function InstructionStep({ number, title, children }: { number: string; title: s
   return <li className="flex gap-3"><span className="grid size-6 shrink-0 place-items-center rounded-full border border-border text-[11px] text-muted-foreground">{number}</span><div className="min-w-0"><p className="font-medium">{title}</p>{children}</div></li>;
 }
 
-function ChatGptMark() { return <span className="grid size-5 place-items-center rounded-full border border-current text-[10px] font-bold" aria-hidden="true">✳</span>; }
-function ClaudeMark() { return <span className="text-sm font-semibold text-orange-300" aria-hidden="true">✦</span>; }
+function ChatGptMark() {
+  return <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none"><path d="M12 3.1a4.1 4.1 0 0 1 7.08 2.82v.4a4.1 4.1 0 0 1 2.05 7.64l-.35.2a4.1 4.1 0 0 1-4.1 6.94l-.35-.2a4.1 4.1 0 0 1-7.08 2.82l-.35-.2a4.1 4.1 0 0 1-7.08-2.82v-.4a4.1 4.1 0 0 1-2.05-7.64l.35-.2a4.1 4.1 0 0 1 4.1-6.94l.35.2A4.1 4.1 0 0 1 12 3.1Z" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round"/><path d="m8.15 7.05 7.7 4.45v5.05M15.85 7.05 8.15 11.5v5.05M5.6 10.05v3.9l4.45 2.6M18.4 10.05v3.9l-4.45 2.6M12 5.6v4.95l4.45 2.6M12 18.4v-4.95l-4.45-2.6" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+}
+
+function ClaudeMark() {
+  return <svg aria-hidden="true" className="size-5 text-[#D97757]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.75c.5 4.5 2.05 7.15 6.25 8.25-4.2 1.1-5.75 3.75-6.25 8.25-.5-4.5-2.05-7.15-6.25-8.25C9.95 8.9 11.5 6.25 12 1.75ZM4.25 14.2c.25 2.35 1.05 3.75 3.25 4.3-2.2.55-3 1.95-3.25 4.3-.25-2.35-1.05-3.75-3.25-4.3 2.2-.55 3-1.95 3.25-4.3ZM19.75 14.2c.25 2.35 1.05 3.75 3.25 4.3-2.2.55-3 1.95-3.25 4.3-.25-2.35-1.05-3.75-3.25-4.3 2.2-.55 3-1.95 3.25-4.3Z"/></svg>;
+}
