@@ -17,8 +17,6 @@ export function AuthGate({ children, requireOnboarding = true }: { children: Rea
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     } else if (session.data && requireOnboarding && !session.data.onboarding_completed) {
       router.replace("/onboarding");
-    } else if (session.data?.onboarding_completed && pathname === "/onboarding") {
-      router.replace("/");
     }
   }, [pathname, requireOnboarding, router, session.data, session.error]);
 

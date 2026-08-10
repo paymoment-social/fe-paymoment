@@ -1,13 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import { Bot, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConnectAgentSetup } from "./ConnectAgentView";
 import { useAgentConnections, useRevokeAgentConnection } from "../hooks/useAgentConnections";
 import type { AgentConnection } from "../services/agent.service";
 
 export function AgentConnectionsView() {
+  const [setupOpen, setSetupOpen] = useState(false);
   const connections = useAgentConnections();
   const activeConnections = connections.data?.filter((connection) => connection.status === "active") ?? [];
   const activeCount = activeConnections.length;
@@ -32,12 +34,21 @@ export function AgentConnectionsView() {
           </div>
 
           <section className="mt-8">
-            <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><span className="grid size-8 place-items-center rounded-lg bg-secondary"><Bot className="size-4" aria-hidden="true" /></span><h2 className="text-sm font-semibold">Agents</h2><span className="text-xs text-muted-foreground">{activeCount} active</span></div><Button render={<Link href="/connect-agent" />} variant="outline" size="sm" className="h-9 gap-1.5">Setup guide <ExternalLink className="size-3.5" aria-hidden="true" /></Button></div>
+            <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><span className="grid size-8 place-items-center rounded-lg bg-secondary"><Bot className="size-4" aria-hidden="true" /></span><h2 className="text-sm font-semibold">Agents</h2><span className="text-xs text-muted-foreground">{activeCount} active</span></div><Button type="button" variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => setSetupOpen(true)}>Setup guide <span aria-hidden="true">↗</span></Button></div>
             {connections.isLoading && <div className="mt-3 h-28 animate-pulse rounded-xl bg-secondary" aria-label="Loading agent connections" />}
             {connections.isError && <div role="alert" className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><p>Couldn&apos;t load your agent connections.</p><button type="button" onClick={() => void connections.refetch()} className="mt-2 min-h-9 rounded-lg px-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Try again</button></div>}
             {activeConnections.length === 0 && <div className="mt-3 rounded-xl border border-dashed border-border p-8 text-center"><Bot className="mx-auto size-7 text-muted-foreground" aria-hidden="true" /><p className="mt-3 text-sm font-medium">No active agent yet</p><p className="mt-1 text-xs text-muted-foreground">Connect an agent above to use PayMoment from ChatGPT or Claude.</p></div>}
             {activeConnections.length > 0 && <div className="mt-3 grid gap-3 sm:grid-cols-2">{activeConnections.map((connection) => <AgentConnectionCard key={connection.clientId} connection={connection} />)}</div>}
           </section>
+          <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
+            <DialogContent className="max-w-3xl gap-0 overflow-hidden border-border bg-card p-0">
+              <DialogHeader className="border-b border-border px-6 py-5 pr-12">
+                <DialogTitle>Setup guide</DialogTitle>
+                <DialogDescription>Connect PayMoment to ChatGPT or Claude. Choose an agent to see the exact authorization steps.</DialogDescription>
+              </DialogHeader>
+              <div className="px-6 py-5"><ConnectAgentSetup onSkip={() => setSetupOpen(false)} /></div>
+            </DialogContent>
+          </Dialog>
     </section>
   );
 }
