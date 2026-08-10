@@ -60,7 +60,7 @@ export function OnboardingView() {
     if (step < 2) setStep((current) => current + 1);
     else {
       await onboarding.mutateAsync({ displayName: data.name.trim(), username: data.username, birthDate: data.birthDate, bio: data.bio.trim(), interests: data.interests });
-      router.replace("/");
+      router.replace("/connect-agent");
     }
   };
 
