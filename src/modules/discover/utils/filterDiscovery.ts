@@ -6,6 +6,7 @@ export function filterDiscovery(data: DiscoverData, query: string): DiscoverData
   return {
     people: data.people.filter((person) => `${person.name} ${person.handle}`.toLowerCase().includes(normalized)),
     moments: data.moments.filter((moment) => `${moment.body} ${moment.tag ?? ""} ${moment.author.handle}`.toLowerCase().includes(normalized)),
+    articles: data.articles.filter((article) => `${article.article?.title ?? ""} ${article.article?.description ?? ""} ${article.body}`.toLowerCase().includes(normalized)),
     topics: data.topics.filter((topic) => topic.label.toLowerCase().includes(normalized)),
   };
 }

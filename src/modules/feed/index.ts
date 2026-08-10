@@ -9,7 +9,5 @@ export { ReplyComposer } from "./components/ReplyComposer";
 export { ReplyList } from "./components/ReplyList";
 export { ComposerProvider, useComposer } from "./context/ComposerContext";
 export { useFeed } from "./hooks/useFeed";
-export { useFeedStore } from "./store/useFeedStore";
-export { CURRENT_USER, PEOPLE } from "./constants";
 export { getFeedPosts } from "./services/feed.service";
 export type { FeedAuthor, FeedPost, FeedReply } from "./types";

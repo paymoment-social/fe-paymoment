@@ -5,17 +5,19 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ArrowUpRight, LockKeyhole } from "lucide-react";
+import { API_URL } from "@/lib/api/client";
 
 export function LoginView() {
   const searchParams = useSearchParams();
   const [isStartingAuth, setIsStartingAuth] = useState(false);
   const authError = searchParams.get("error");
-  const authApiUrl = process.env.NEXT_PUBLIC_AUTH_API_URL ?? "http://localhost:8787";
+  const requestedNext = searchParams.get("next");
+  const next = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : "/";
 
   const errorMessage = authError === "auth_not_configured"
-    ? "Google sign-in belum dikonfigurasi di server."
+    ? "Google sign-in is not configured on the server."
     : authError
-      ? "Sign-in belum selesai. Silakan coba lagi."
+      ? "Sign-in did not complete. Please try again."
       : null;
 
   return (
@@ -69,14 +71,14 @@ export function LoginView() {
               <Image src="/paybox-lockup-white.svg" alt="PayBox" width={72} height={17} className="object-contain" />
               <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Coming soon</span>
             </button>
-            <Link href={`${authApiUrl}/api/auth/google?next=/`} onClick={() => setIsStartingAuth(true)} aria-busy={isStartingAuth} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-              <GoogleIcon /> {isStartingAuth ? "Opening Google…" : "Continue with Google"}
+            <Link href={`${API_URL}/api/v1/auth/google?next=${encodeURIComponent(next)}`} onClick={() => setIsStartingAuth(true)} aria-busy={isStartingAuth} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+              <GoogleIcon /> {isStartingAuth ? "Opening Google..." : "Continue with Google"}
             </Link>
           </div>
           <p className="mt-4 text-center text-xs leading-5 text-muted-foreground">Sign in to continue to PayMoment.</p>
 
           <p className="mt-12 text-center text-xs leading-5 text-muted-foreground">
-            By continuing, you agree to PayMoment&apos;s <Link href="/" className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-primary">Terms</Link> and <Link href="/" className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-primary">Privacy Policy</Link>.
+            By continuing, you agree to PayMoment&apos;s <Link href="/terms" className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-primary">Terms</Link> and <Link href="/privacy" className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-primary">Privacy Policy</Link>.
           </p>
         </div>
       </section>

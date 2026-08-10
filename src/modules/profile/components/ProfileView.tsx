@@ -5,8 +5,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthorAvatar, PostCard, VerifiedMark, useFeed } from "@/modules/feed";
-import { useBoxStore } from "@/modules/rewards/store/useBoxStore";
-import { useProfileContext } from "../context/ProfileContext";
 import { useProfile } from "../hooks/useProfile";
 import { formatProfileCount } from "../utils/formatProfileCount";
 import { EditProfileDialog } from "./EditProfileDialog";
@@ -14,15 +12,13 @@ import { EditProfileDialog } from "./EditProfileDialog";
 export function ProfileView() {
   const profile = useProfile();
   const feed = useFeed();
-  const balance = useBoxStore((state) => state.balance);
-  const { profileOverride } = useProfileContext();
   const [editing, setEditing] = useState(false);
 
   if (profile.isLoading) return <Skeleton className="h-80 rounded-xl" />;
   if (!profile.data) return <section className="rounded-xl border p-5"><p>Couldn&apos;t load your profile.</p><Button variant="outline" className="mt-3 h-10" onClick={() => void profile.refetch()}>Try again</Button></section>;
 
-  const data = profileOverride ?? profile.data;
-  const verified = balance >= 10;
+  const data = profile.data;
+  const verified = Boolean(data.verified);
   const ownMoments = feed.data?.filter((post) => post.author.id === data.id);
 
   return (

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { Icon } from "@iconify/react";
-import { TRENDING_TOPICS } from "@/modules/discover/constants";
-import { useBoxStore } from "@/modules/rewards/store/useBoxStore";
+import { useTrendingTopics } from "@/modules/discover/hooks/useDiscover";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
 import { BoxIcon } from "./ProductLogo";
 
 export function RightRail() {
-  const balance = useBoxStore((state) => state.balance);
+  const balance = useCurrentUser().box ?? 0;
+  const trending = useTrendingTopics();
   return (
     <aside className="sticky top-0 hidden h-screen overflow-y-auto py-6 xl:block">
       <section className="rounded-xl border border-border/80 bg-card/25 p-4">
@@ -17,7 +18,7 @@ export function RightRail() {
           <Link href="/rewards" className="relative mt-2 flex min-h-11 items-center gap-3 rounded-lg bg-white/5 px-3 text-sm font-medium ring-1 ring-white/5 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon icon="solar:gift-linear" className="size-5" aria-hidden="true" />Explore rewards<Icon icon="solar:alt-arrow-right-linear" className="ml-auto size-5" aria-hidden="true" /></Link>
         </div>
       </section>
-      <section className="mt-5 rounded-xl border border-border/80 bg-card/25 p-5"><h2 className="font-semibold">Trending topics</h2><div className="mt-4 space-y-1.5">{TRENDING_TOPICS.map((topic) => <Link key={topic.label} href={`/discover?q=${encodeURIComponent(topic.label)}`} className="flex min-h-11 items-center justify-between rounded-lg text-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span>{topic.label}</span><span className="text-sm text-muted-foreground">{topic.posts} posts</span></Link>)}</div><Link href="/discover" className="mt-4 block rounded-sm text-center text-sm text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">View more</Link></section>
+      <section className="mt-5 rounded-xl border border-border/80 bg-card/25 p-5"><h2 className="font-semibold">Trending topics</h2><div className="mt-4 space-y-1.5">{trending.isLoading ? <p className="py-2 text-sm text-muted-foreground">Loading topics...</p> : trending.isError ? <p role="alert" className="py-2 text-sm text-muted-foreground">Trending topics are temporarily unavailable.</p> : trending.data?.length ? trending.data.map((topic) => <Link key={topic.label} href={`/discover?q=${encodeURIComponent(topic.label)}`} className="flex min-h-11 items-center justify-between rounded-lg text-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span>{topic.label}</span><span className="text-sm text-muted-foreground">{topic.posts} posts</span></Link>) : <p className="py-2 text-sm text-muted-foreground">No trending topics yet.</p>}</div><Link href="/discover" className="mt-4 block rounded-sm text-center text-sm text-primary hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">View more</Link></section>
     </aside>
   );
 }

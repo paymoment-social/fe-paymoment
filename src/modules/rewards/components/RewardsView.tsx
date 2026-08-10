@@ -5,19 +5,18 @@ import { motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { VERIFIED_BOX_THRESHOLD } from "../constants";
-import { useRewardsContext } from "../context/RewardsContext";
-import { useRewards } from "../hooks/useRewards";
-import { useBoxStore } from "../store/useBoxStore";
+import { useRedeemReward, useRewards } from "../hooks/useRewards";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
 import { formatBox } from "../utils/formatBox";
 import { LeaderboardCard } from "./LeaderboardCard";
 
 export function RewardsView() {
   const rewards = useRewards();
-  const { claimedIds, claim } = useRewardsContext();
+  const redeem = useRedeemReward();
   const reduceMotion = useReducedMotion();
-  const balance = useBoxStore((state) => state.balance);
-  const resetDemo = useBoxStore((state) => state.resetDemo);
-  const verified = balance >= VERIFIED_BOX_THRESHOLD;
+  const currentUser = useCurrentUser();
+  const balance = rewards.data?.balance ?? 0;
+  const verified = Boolean(currentUser.verified);
 
   if (rewards.isError) {
     return (
@@ -45,12 +44,6 @@ export function RewardsView() {
             </div>
             <p className="mt-2 font-mono text-4xl font-medium tabular-nums">{formatBox(balance)}</p>
             <p className="mt-2 text-sm text-muted-foreground">Earned from your PayMoment activity.</p>
-            <Button variant="ghost" className="mt-3 h-10 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground" onClick={() => {
-              resetDemo();
-              toast.success("Local Box demo reset", { description: "Claim a 10 Box Moment to test Verified again." });
-            }}>
-              <Icon icon="solar:restart-linear" className="size-4" aria-hidden="true" /> Reset local demo
-            </Button>
           </div>
           <div className="grid size-28 place-items-center rounded-2xl border border-primary/30 bg-background/70 shadow-[0_20px_50px_-20px_color-mix(in_oklab,var(--primary)_55%,transparent)]">
             <Icon icon="solar:box-bold-duotone" className="size-16 text-primary" aria-hidden="true" />
@@ -67,10 +60,9 @@ export function RewardsView() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {rewards.data?.catalog.map((reward) => {
-            const isVerification = reward.id === "verified";
-            const unlocked = isVerification && balance >= VERIFIED_BOX_THRESHOLD;
-            const claimed = claimedIds.includes(reward.id);
-            const canClaim = !isVerification && reward.available && reward.cost <= balance && !claimed;
+            const isVerification = reward.slug === "verified-badge";
+            const unlocked = isVerification && verified;
+            const canClaim = !isVerification && reward.available && reward.cost <= balance;
             const remaining = Math.max(VERIFIED_BOX_THRESHOLD - balance, 0);
 
             return (
@@ -102,13 +94,10 @@ export function RewardsView() {
                     <Button
                       variant={canClaim ? "default" : "outline"}
                       className="h-10"
-                      disabled={!canClaim}
-                      onClick={() => {
-                        claim(reward.id, reward.cost);
-                        toast.success(`${reward.title} claimed`);
-                      }}
+                      onClick={() => redeem.mutate(reward.id, { onSuccess: () => toast.success(`${reward.title} redeemed`), onError: (error) => toast.error(error.message) })}
+                      disabled={!canClaim || redeem.isPending}
                     >
-                      {claimed ? "Claimed" : reward.available ? "Claim" : "Coming soon"}
+                      {redeem.isPending ? "Redeeming..." : reward.available ? "Redeem" : "Coming soon"}
                     </Button>
                   )}
                 </div>

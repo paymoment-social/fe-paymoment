@@ -1,12 +1,24 @@
 "use client";
+
 import { createContext, use, useMemo, useState, type ReactNode } from "react";
-import type { ChatMessage } from "../types";
-type Value = { activeId: string; setActiveId: (id: string) => void; sent: Record<string, ChatMessage[]>; send: (conversationId: string, body: string, attachment?: ChatMessage["attachment"]) => void };
+
+type Value = { activeId: string; setActiveId: (id: string) => void };
 const MessagesContext = createContext<Value | null>(null);
+
 export function MessagesProvider({ children }: { children: ReactNode }) {
-  const [activeId, setActiveId] = useState("c1");
-  const [sent, setSent] = useState<Record<string, ChatMessage[]>>({});
-  const value = useMemo(() => ({ activeId, setActiveId, sent, send: (conversationId: string, body: string, attachment?: ChatMessage["attachment"]) => setSent((current) => ({ ...current, [conversationId]: [...(current[conversationId] ?? []), { id: `sent-${Date.now()}`, sender: "me", body, time: "now", attachment }] })) }), [activeId, sent]);
+  const [activeId, setActiveIdState] = useState(() => typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("conversation") ?? "");
+  const setActiveId = (id: string) => {
+    setActiveIdState(id);
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set("conversation", id); else url.searchParams.delete("conversation");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  };
+  const value = useMemo(() => ({ activeId, setActiveId }), [activeId]);
   return <MessagesContext value={value}>{children}</MessagesContext>;
 }
-export function useMessagesContext() { const value = use(MessagesContext); if (!value) throw new Error("MessagesProvider is missing"); return value; }
+
+export function useMessagesContext() {
+  const value = use(MessagesContext);
+  if (!value) throw new Error("MessagesProvider is missing");
+  return value;
+}

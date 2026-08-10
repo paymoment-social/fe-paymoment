@@ -10,10 +10,15 @@ import { DiscoverProvider, DiscoverView } from "@/modules/discover";
 import { Composer, ComposerProvider, FeedView, useComposer } from "@/modules/feed";
 import { MessagesProvider, MessagesView } from "@/modules/messages";
 import { NotificationsProvider, NotificationsView } from "@/modules/notifications";
-import { ProfileProvider, ProfileView } from "@/modules/profile";
-import { RewardsProvider, RewardsView, VerifiedUnlockDialog } from "@/modules/rewards";
+import { ProfileView } from "@/modules/profile";
+import { LikesView } from "@/modules/likes";
+import { AuthGate } from "@/modules/auth/components/AuthGate";
+import { useSession } from "@/modules/auth/hooks/useSession";
+import { ModerationView } from "@/modules/reports/components/ModerationView";
+import { RewardsView, VerifiedUnlockDialog } from "@/modules/rewards";
 import { ShellProvider } from "../context/ShellContext";
 import { useSectionTitle } from "../hooks/useSectionTitle";
+import { useRealtime } from "../hooks/useRealtime";
 import type { ShellSection } from "../types";
 import { MobileNavigation } from "./MobileNavigation";
 import { ProductLogo } from "./ProductLogo";
@@ -22,16 +27,17 @@ import { Sidebar } from "./Sidebar";
 
 export function PayMomentShell({ section }: { section: ShellSection }) {
   return (
-    <ShellProvider><ComposerProvider><DiscoverProvider><NotificationsProvider><MessagesProvider><RewardsProvider><ProfileProvider><BookmarksProvider>
+    <AuthGate><ShellProvider><ComposerProvider><DiscoverProvider><NotificationsProvider><MessagesProvider><BookmarksProvider>
       <ShellLayout section={section} />
-    </BookmarksProvider></ProfileProvider></RewardsProvider></MessagesProvider></NotificationsProvider></DiscoverProvider></ComposerProvider></ShellProvider>
+    </BookmarksProvider></MessagesProvider></NotificationsProvider></DiscoverProvider></ComposerProvider></ShellProvider></AuthGate>
   );
 }
 
 function ShellLayout({ section }: { section: ShellSection }) {
+  useRealtime();
   const title = useSectionTitle(section);
   const { setOpen } = useComposer();
-  const [feedOrder, setFeedOrder] = useState<"Latest" | "Top">("Latest");
+  const [feedOrder, setFeedOrder] = useState<"Latest" | "Top" | "For you">("Latest");
   const isMessages = section === "messages";
   return (
     <>
@@ -40,9 +46,9 @@ function ShellLayout({ section }: { section: ShellSection }) {
         <main className={cn("min-w-0", isMessages ? "flex h-screen min-h-0 w-full flex-col overflow-hidden py-5 lg:py-6 xl:col-span-2" : "py-5 lg:py-6")}>
           <header className="sticky top-0 z-20 -mx-1 mb-4 flex min-h-11 items-center justify-between bg-background/90 px-1 backdrop-blur-xl">
             <div className="flex min-w-0 items-center gap-3"><div className="lg:hidden"><ProductLogo compact /></div><h1 className="truncate text-xl font-semibold tracking-[-0.025em] lg:text-2xl">{title}</h1></div>
-            {section === "for-you" ? <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" className="h-10 gap-3 px-3 text-sm font-normal" aria-label={`Feed order: ${feedOrder}`} />}>{feedOrder}<Icon icon="solar:alt-arrow-down-linear" className="size-4" aria-hidden="true" /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-36 p-1.5">{(["Latest", "Top"] as const).map((option) => <DropdownMenuItem key={option} className="min-h-10 px-3" onClick={() => setFeedOrder(option)}>{option}{feedOrder === option && <Icon icon="solar:check-circle-bold" className="ml-auto size-4 text-primary" aria-hidden="true" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu> : <Button variant="ghost" size="icon" className="size-10 rounded-full" aria-label="Page options"><Icon icon="solar:menu-dots-circle-linear" className="size-6" aria-hidden="true" /></Button>}
+            {section === "for-you" ? <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" className="h-10 gap-3 px-3 text-sm font-normal" aria-label={`Feed order: ${feedOrder}`} />}>{feedOrder}<Icon icon="solar:alt-arrow-down-linear" className="size-4" aria-hidden="true" /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-36 p-1.5">{(["Latest", "Top", "For you"] as const).map((option) => <DropdownMenuItem key={option} className="min-h-10 px-3" onClick={() => setFeedOrder(option)}>{option}{feedOrder === option && <Icon icon="solar:check-circle-bold" className="ml-auto size-4 text-primary" aria-hidden="true" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu> : <Button variant="ghost" size="icon" className="size-10 rounded-full" aria-label="Page options"><Icon icon="solar:menu-dots-circle-linear" className="size-6" aria-hidden="true" /></Button>}
           </header>
-          <div className={cn(isMessages && "min-h-0 flex-1")}><SectionContent section={section} /></div>
+          <div className={cn(isMessages && "min-h-0 flex-1")}><SectionContent section={section} feedMode={feedOrder === "Top" ? "top" : feedOrder === "For you" ? "for_you" : "latest"} /></div>
         </main>
         {!isMessages && <RightRail />}
       </div>
@@ -54,7 +60,14 @@ function ShellLayout({ section }: { section: ShellSection }) {
   );
 }
 
-function SectionContent({ section }: { section: ShellSection }) {
+function SectionContent({ section, feedMode }: { section: ShellSection; feedMode: "latest" | "top" | "for_you" }) {
+  const session = useSession();
+  if (section === "moderation") {
+    const canModerate = session.data?.roles.some((role) => role === "moderator" || role === "admin") ?? false;
+    if (session.isLoading) return <div className="space-y-3" aria-busy="true"><div className="h-24 animate-pulse rounded-xl bg-secondary" /><div className="h-36 animate-pulse rounded-xl bg-secondary" /></div>;
+    if (!canModerate) return <section role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-5"><h2 className="font-semibold">Moderator access required</h2><p className="mt-1 text-sm text-muted-foreground">Your account does not have permission to review reports.</p></section>;
+    return <ModerationView />;
+  }
   switch (section) {
     case "discover": return <DiscoverView />;
     case "notifications": return <NotificationsView />;
@@ -62,6 +75,7 @@ function SectionContent({ section }: { section: ShellSection }) {
     case "rewards": return <RewardsView />;
     case "profile": return <ProfileView />;
     case "bookmarks": return <BookmarksView />;
-    default: return <FeedView />;
+    case "likes": return <LikesView />;
+    default: return <FeedView mode={feedMode} />;
   }
 }

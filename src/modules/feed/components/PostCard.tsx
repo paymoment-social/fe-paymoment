@@ -4,16 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
-import { motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useBoxStore } from "@/modules/rewards/store/useBoxStore";
-import { showBoxToast, showLikeToast } from "@/lib/app-toast";
-import { CURRENT_USER, PEOPLE } from "../constants";
-import { useFeedStore } from "../store/useFeedStore";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
+import { ReportPostDialog } from "@/modules/reports/components/ReportPostDialog";
+import { useDeleteMoment, usePollVote, usePostReaction, useUserFollow } from "../hooks/usePostMutations";
+import { usePollVoters } from "../hooks/usePollVoters";
+import { recordPostShare } from "../services/feed.service";
 import type { FeedPost } from "../types";
 import { formatEngagement } from "../utils/formatEngagement";
 import { tokenizePostBody } from "../utils/postTokens";
@@ -24,25 +24,26 @@ import { RepostMenu } from "./RepostMenu";
 
 export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?: "feed" | "detail" }) {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const currentUser = useCurrentUser();
   const [quoteOpen, setQuoteOpen] = useState(false);
-  const liked = useFeedStore((state) => state.likedIds.includes(post.id));
-  const bookmarked = useFeedStore((state) => state.bookmarkedIds.includes(post.id));
-  const following = useFeedStore((state) => state.followingIds.includes(post.author.id));
-  const toggleLike = useFeedStore((state) => state.toggleLike);
-  const toggleBookmark = useFeedStore((state) => state.toggleBookmark);
-  const toggleFollow = useFeedStore((state) => state.toggleFollow);
-  const localReplyCount = useFeedStore((state) => state.repliesByPost?.[post.id]?.length ?? 0);
-  const boxBalance = useBoxStore((state) => state.balance);
-  const rewardClaimed = useBoxStore((state) => state.claimedMomentIds.includes(post.id));
-  const claimMoment = useBoxStore((state) => state.claimMoment);
-  const isVerified = post.author.id === CURRENT_USER.id ? boxBalance >= 10 : post.author.verified;
+  const [reportOpen, setReportOpen] = useState(false);
+  const liked = Boolean(post.liked);
+  const bookmarked = Boolean(post.bookmarked);
+  const following = post.author.relationship === "following";
+  const likeMutation = usePostReaction("like");
+  const bookmarkMutation = usePostReaction("bookmark");
+  const followMutation = useUserFollow();
+  const deleteMutation = useDeleteMoment();
+  const isVerified = post.author.id === currentUser.id ? currentUser.verified : post.author.verified;
 
   async function shareMoment() {
     const url = `${window.location.origin}/post/${post.id}`;
-    if (navigator.share) await navigator.share({ title: `@${post.author.handle} on PayMoment`, text: post.body, url });
-    else {
+    if (navigator.share) {
+      await navigator.share({ title: `@${post.author.handle} on PayMoment`, text: post.body, url });
+      await recordPostShare(post.id, "native");
+    } else {
       await navigator.clipboard.writeText(url);
+      await recordPostShare(post.id, "copy");
       toast.success("Moment link copied");
     }
   }
@@ -50,7 +51,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
   return (
     <article className={cn("overflow-hidden p-4 sm:p-5", variant === "feed" ? "rounded-xl border bg-card/55" : "bg-transparent")}>
       <header className="flex items-start gap-3">
-        <Link href={`/post/${post.id}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Open moment by ${post.author.handle}`}>
+        <Link href={`/u/${encodeURIComponent(post.author.handle)}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Open profile for ${post.author.handle}`}>
           <AuthorAvatar author={post.author} />
           <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
@@ -67,21 +68,24 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
             <Icon icon="solar:menu-dots-bold" className="size-5 text-muted-foreground" aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuItem onClick={() => toggleFollow(post.author.id)}>
+            {post.author.id !== currentUser.id && <DropdownMenuItem disabled={followMutation.isPending} onClick={() => followMutation.mutate({ userId: post.author.id, enabled: !following }, { onSuccess: (result) => toast.success(result.requested ? "Follow request sent" : result.following ? "Following" : "Unfollowed"), onError: (error) => toast.error(error.message) })}>
               <Icon icon={following ? "solar:user-minus-linear" : "solar:user-plus-linear"} aria-hidden="true" />
               {following ? "Unfollow" : "Follow"} @{post.author.handle}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { toggleBookmark(post.id); toast.success(bookmarked ? "Removed from bookmarks" : "Saved to bookmarks"); }}>
+            </DropdownMenuItem>}
+            <DropdownMenuItem onClick={() => bookmarkMutation.mutate({ postId: post.id, enabled: !bookmarked }, { onSuccess: () => toast.success(bookmarked ? "Removed from bookmarks" : "Saved to bookmarks"), onError: (error) => toast.error(error.message) })} disabled={bookmarkMutation.isPending}>
               <Icon icon="solar:bookmark-linear" aria-hidden="true" /> Save moment
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={() => setReportOpen(true)}>
               <Icon icon="solar:flag-linear" aria-hidden="true" /> Report moment
             </DropdownMenuItem>
-            {post.article && post.author.id === CURRENT_USER.id && isVerified && (
+            {post.article && post.author.id === currentUser.id && isVerified && (
               <DropdownMenuItem onClick={() => router.push(`/article/${post.id}/edit`)}>
                 <Icon icon="solar:pen-new-square-linear" aria-hidden="true" /> Edit article
               </DropdownMenuItem>
             )}
+            {post.isOwner && <DropdownMenuItem disabled={deleteMutation.isPending} className="text-destructive focus:text-destructive" onClick={() => { if (!window.confirm("Delete this Moment? This cannot be undone.")) return; deleteMutation.mutate(post.id, { onSuccess: () => { toast.success("Moment deleted"); router.push("/"); }, onError: (error) => toast.error(error.message) }); }}>
+              <Icon icon="solar:trash-bin-trash-linear" aria-hidden="true" /> Delete moment
+            </DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
@@ -95,29 +99,16 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
 
       <footer className="mt-3 flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1 sm:gap-2">
-          <ActionButton icon={liked ? "solar:heart-bold" : "solar:heart-linear"} label={liked ? "Unlike" : "Like"} count={post.likes + (liked ? 1 : 0)} active={liked} onClick={() => { toggleLike(post.id); if (!liked) showLikeToast(post.author); }} />
-          <ActionButton icon="solar:chat-round-linear" label="View replies" count={post.replies + localReplyCount} onClick={() => router.push(`/post/${post.id}#reply-composer`)} />
+          <ActionButton icon={liked ? "solar:heart-bold" : "solar:heart-linear"} label={liked ? "Unlike" : "Like"} count={post.likes} active={liked} onClick={() => likeMutation.mutate({ postId: post.id, enabled: !liked }, { onError: (error) => toast.error(error.message) })} />
+          <ActionButton icon="solar:chat-round-linear" label="View replies" count={post.replies} onClick={() => router.push(`/post/${post.id}#reply-composer`)} />
           <RepostMenu post={post} onQuote={() => setQuoteOpen(true)} />
           <ActionButton icon="solar:plain-linear" label="Share" onClick={() => void shareMoment()} />
         </div>
-        <motion.div whileTap={reduceMotion ? undefined : { scale: 0.96 }}>
-          <Button
-            variant="ghost"
-            className="h-9 rounded-full border-0 bg-primary/5 px-3 text-primary hover:bg-primary/10 disabled:opacity-70"
-            disabled={rewardClaimed}
-            aria-label={rewardClaimed ? "Reward from this Moment claimed" : `Claim ${post.reward} Box`}
-            onClick={() => {
-              claimMoment(post.id, post.reward);
-              showBoxToast(post.reward, `Your balance is now ${new Intl.NumberFormat("en-US").format(boxBalance + post.reward)} Box.`);
-            }}
-          >
-            <Icon icon={rewardClaimed ? "solar:check-circle-bold" : "solar:box-bold"} className="size-4" aria-hidden="true" />
-            {rewardClaimed ? "Claimed" : `+${post.reward} Box`}
-          </Button>
-        </motion.div>
+        <span className="text-xs text-muted-foreground">{post.views ? `${formatEngagement(post.views)} views` : ""}</span>
       </footer>
 
       <QuoteComposer post={post} open={quoteOpen} onOpenChange={setQuoteOpen} />
+      <ReportPostDialog postId={post.id} open={reportOpen} onOpenChange={setReportOpen} />
     </article>
   );
 }
@@ -166,19 +157,19 @@ function ArticlePreview({ article, expanded }: { article: NonNullable<FeedPost["
 }
 
 function PollPreview({ post }: { post: FeedPost }) {
-  const votePoll = useFeedStore((state) => state.votePoll);
+  const pollVote = usePollVote();
   const [showVoters, setShowVoters] = useState(false);
   const poll = post.poll!;
-  const totalVotes = poll.options.reduce((total, option) => total + option.voterIds.length, 0);
-  const votedOption = poll.options.find((option) => option.voterIds.includes(CURRENT_USER.id));
-  const authorById = new Map([CURRENT_USER, ...PEOPLE].map((author) => [author.id, author]));
+  const voters = usePollVoters(post.id, showVoters && poll.voterVisibility === "public");
+  const totalVotes = poll.totalVotes;
+  const votedOption = poll.options.find((option) => option.id === poll.viewerOptionId);
 
   return (
     <section className="mt-4 rounded-2xl border bg-background/45 p-4 sm:p-5">
       <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/15 text-primary"><Icon icon="solar:chart-square-linear" className="size-5" aria-hidden="true" /></span><div><h3 className="font-semibold leading-6">{poll.question}</h3><p className="mt-1 text-xs text-muted-foreground">{totalVotes ? `${totalVotes} vote${totalVotes === 1 ? "" : "s"}` : "Be the first to vote"}</p></div></div>
-      <div className="mt-4 space-y-2">{poll.options.map((option) => { const percentage = totalVotes ? Math.round((option.voterIds.length / totalVotes) * 100) : 0; const selected = votedOption?.id === option.id; return <button key={option.id} type="button" onClick={() => votePoll(post.id, option.id, CURRENT_USER.id)} className="relative min-h-12 w-full overflow-hidden rounded-xl border border-border/80 p-3 text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-pressed={selected}><span className="absolute inset-y-0 left-0 bg-primary/10 transition-all" style={{ width: `${percentage}%` }} /><span className="relative flex items-center justify-between gap-3 text-sm"><span className="font-medium">{option.label}</span><span className={cn("tabular-nums text-xs", selected ? "font-semibold text-primary" : "text-muted-foreground")}>{percentage}%</span></span></button>; })}</div>
-      <div className="mt-4 flex items-center justify-between gap-3"><div className="flex items-center">{Array.from(new Set(poll.options.flatMap((option) => option.voterIds))).slice(0, 5).map((id, index) => { const author = authorById.get(id); return author ? <AuthorAvatar key={id} author={author} className={cn("size-7 border-2 border-card", index > 0 && "-ml-2")} /> : null; })}</div>{totalVotes > 0 && <Button type="button" variant="ghost" className="h-9 rounded-full px-3 text-xs text-primary" onClick={() => setShowVoters((value) => !value)}>{showVoters ? "Hide voters" : "View voters"}</Button>}</div>
-      {showVoters && <div className="mt-3 grid gap-2 border-t pt-3 sm:grid-cols-2">{poll.options.map((option) => <div key={option.id} className="rounded-xl bg-muted/30 p-3"><p className="text-xs font-semibold text-muted-foreground">{option.label}</p>{option.voterIds.length ? <div className="mt-2 space-y-2">{option.voterIds.map((id) => { const author = authorById.get(id); return author ? <div key={id} className="flex items-center gap-2"><AuthorAvatar author={author} className="size-7" /><span className="truncate text-xs font-medium">{author.name}</span><span className="truncate text-[11px] text-muted-foreground">@{author.handle}</span></div> : <p key={id} className="text-xs text-muted-foreground">Community voter</p>; })}</div> : <p className="mt-2 text-xs text-muted-foreground">No votes yet</p>}</div>)}</div>}
+      <div className="mt-4 space-y-2">{poll.options.map((option) => { const percentage = totalVotes ? Math.round((option.voteCount / totalVotes) * 100) : 0; const selected = votedOption?.id === option.id; return <button key={option.id} type="button" disabled={poll.status === "closed" || pollVote.isPending} onClick={() => pollVote.mutate({ postId: post.id, optionId: selected && poll.allowVoteChange ? undefined : option.id }, { onError: (error) => toast.error(error.message) })} className="relative min-h-12 w-full overflow-hidden rounded-xl border border-border/80 p-3 text-left transition-colors hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-70" aria-pressed={selected}><span className="absolute inset-y-0 left-0 bg-primary/10 transition-all" style={{ width: `${percentage}%` }} /><span className="relative flex items-center justify-between gap-3 text-sm"><span className="font-medium">{option.label}</span><span className={cn("tabular-nums text-xs", selected ? "font-semibold text-primary" : "text-muted-foreground")}>{percentage}%</span></span></button>; })}</div>
+      {poll.voterVisibility === "public" && totalVotes > 0 && <div className="mt-3"><Button type="button" variant="ghost" className="h-9 rounded-full px-3 text-xs text-primary" onClick={() => setShowVoters((value) => !value)}>{showVoters ? "Hide voters" : "View voters"}</Button>{showVoters && <div className="mt-2 space-y-2 border-t pt-3">{voters.isLoading ? <p className="text-xs text-muted-foreground">Loading voters...</p> : voters.isError ? <p role="alert" className="text-xs text-destructive">Voters could not be loaded.</p> : voters.data?.map((voter) => <div key={`${voter.optionId}-${voter.user.id}`} className="flex items-center gap-2"><AuthorAvatar author={voter.user} className="size-7" /><span className="min-w-0 flex-1 truncate text-xs font-medium">{voter.user.name}</span><span className="truncate text-[11px] text-muted-foreground">{poll.options.find((option) => option.id === voter.optionId)?.label}</span></div>)}</div>}</div>}
+      {poll.voterVisibility === "anonymous" && <p className="mt-4 text-xs text-muted-foreground">Votes are anonymous for this poll.</p>}
     </section>
   );
 }

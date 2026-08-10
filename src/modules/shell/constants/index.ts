@@ -7,5 +7,5 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   { id: "profile", label: "Profile", icon: "solar:user-circle-linear" },
   { id: "bookmarks", label: "Saved", icon: "solar:bookmark-linear" },
 ];
-export const SECTION_TITLES: Record<ShellSection, string> = { "for-you": "For you", discover: "Discover", notifications: "Notifications", messages: "Messages", rewards: "Rewards", profile: "Profile", bookmarks: "Saved" };
-export const SHELL_SECTIONS: ShellSection[] = [...NAVIGATION_ITEMS.map((item) => item.id), "rewards"];
+export const SECTION_TITLES: Record<ShellSection, string> = { "for-you": "For you", discover: "Discover", notifications: "Notifications", messages: "Messages", rewards: "Rewards", profile: "Profile", bookmarks: "Saved", likes: "Likes", moderation: "Moderation" };
+export const SHELL_SECTIONS: ShellSection[] = [...NAVIGATION_ITEMS.map((item) => item.id), "rewards", "likes", "moderation"];

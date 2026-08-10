@@ -5,16 +5,17 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useForm } from "@tanstack/react-form";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { type CSSProperties, useDeferredValue, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CURRENT_USER, PEOPLE } from "../constants";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
+import { getDiscoverData } from "@/modules/discover/services/discover.service";
 import { useComposer } from "../context/ComposerContext";
-import { useFeedStore } from "../store/useFeedStore";
-import { useBoxStore } from "@/modules/rewards/store/useBoxStore";
-import { useOptionalNotificationsContext } from "@/modules/notifications";
+import { useCreateMoment } from "../hooks/usePostMutations";
+import { uploadFeedMedia } from "../services/feed.service";
 import { AuthorAvatar } from "./AuthorAvatar";
 import { PollComposerDialog, type PollDraft } from "./PollComposerDialog";
 
@@ -46,49 +47,50 @@ function mentionQuery(value: string) {
   return value.match(/(?:^|\s)@([a-zA-Z0-9_.-]*)$/)?.[1] ?? null;
 }
 
+function MentionSuggestions({ value, onSelect }: { value: string; onSelect: (handle: string) => void }) {
+  const query = mentionQuery(value)?.toLowerCase() ?? "";
+  const deferredQuery = useDeferredValue(query);
+  const suggestions = useQuery({ queryKey: ["paymoment", "composer-mentions", deferredQuery], queryFn: () => getDiscoverData(deferredQuery, "people"), enabled: query.length >= 1, staleTime: 30_000 });
+  if (!query || suggestions.isLoading || !suggestions.data?.people.length) return null;
+  return <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl">{suggestions.data.people.slice(0, 5).map((person) => <button key={person.id} type="button" className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onMouseDown={(event) => event.preventDefault()} onClick={() => onSelect(person.handle)}><AuthorAvatar author={person} className="size-8" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{person.name}</span><span className="block truncate text-xs text-muted-foreground">@{person.handle}</span></span>{person.verified && <Icon icon="solar:verified-check-bold" className="size-4 text-primary" aria-hidden="true" />}</button>)}</div>;
+}
+
 export function Composer({ compact = false }: { compact?: boolean }) {
   const { open, setOpen } = useComposer();
   const router = useRouter();
-  const addPost = useFeedStore((state) => state.addPost);
-  const notifications = useOptionalNotificationsContext();
-  const verified = useBoxStore((state) => state.balance >= 10);
+  const currentUser = useCurrentUser();
+  const createMoment = useCreateMoment();
+  const verified = Boolean(currentUser.verified);
   const fileInput = useRef<HTMLInputElement>(null);
   const emojiTrigger = useRef<HTMLButtonElement>(null);
   const emojiPicker = useRef<HTMLDivElement>(null);
+  const [mediaFile, setMediaFile] = useState<File>();
   const [media, setMedia] = useState<string>();
   const [showEmoji, setShowEmoji] = useState(false);
   const [pollOpen, setPollOpen] = useState(false);
   const [poll, setPoll] = useState<PollDraft>();
+  const [submitError, setSubmitError] = useState<string>();
   const [emojiPickerPosition, setEmojiPickerPosition] = useState({ top: 0, left: 0 });
   const form = useForm({
     defaultValues: { body: "" },
     onSubmit: async ({ value }) => {
       const body = value.body.trim();
-      if (!body && !media && !poll) return;
-      const mentions = [...body.matchAll(/@([a-zA-Z0-9_.-]+)/g)].map((match) => match[1].toLowerCase());
-      const tags = [...body.matchAll(/#([a-zA-Z0-9_.-]+)/g)].map((match) => `#${match[1]}`);
-      addPost({
-        id: `local-${crypto.randomUUID()}`,
-        author: CURRENT_USER,
-        body,
-        createdAt: "now",
-        likes: 0,
-        replies: 0,
-        reposts: 0,
-        reward: 5,
-        mentions,
-        tags,
-        poll,
-        media: media ? [media] : undefined,
-      });
-      if (mentions.includes(CURRENT_USER.handle.toLowerCase())) {
-        notifications?.addNotification({ id: `mention-${crypto.randomUUID()}`, type: "mention", user: CURRENT_USER, text: "mentioned you in a new moment.", time: "now", read: false });
+      if (!body && !mediaFile && !poll) return;
+      setSubmitError(undefined);
+      try {
+        const uploaded = mediaFile ? await uploadFeedMedia(mediaFile, "post") : undefined;
+        await createMoment.mutateAsync({ body, mediaAssetIds: uploaded ? [uploaded.id] : [], poll: poll ? { question: poll.question, options: poll.options.map((option) => option.label) } : undefined });
+        form.reset();
+        setMediaFile(undefined);
+        setMedia(undefined);
+        setPoll(undefined);
+        setOpen(false);
+        toast.success("Moment posted");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "The Moment could not be posted.";
+        setSubmitError(message);
+        toast.error(message);
       }
-      form.reset();
-      setMedia(undefined);
-      setPoll(undefined);
-      setOpen(false);
-      toast.success("Moment posted", { description: "+5 Box added to your pending rewards." });
     },
   });
 
@@ -102,6 +104,7 @@ export function Composer({ compact = false }: { compact?: boolean }) {
       toast.error("Image must be smaller than 5 MB");
       return;
     }
+    setMediaFile(file);
     const reader = new FileReader();
     reader.onload = () => setMedia(String(reader.result));
     reader.readAsDataURL(file);
@@ -165,7 +168,7 @@ export function Composer({ compact = false }: { compact?: boolean }) {
       className="space-y-4"
     >
       <div className="flex items-start gap-3">
-        <AuthorAvatar author={CURRENT_USER} />
+        <AuthorAvatar author={currentUser} />
         <form.Field name="body">
           {(field) => (
             <div className="relative min-w-0 flex-1">
@@ -180,13 +183,7 @@ export function Composer({ compact = false }: { compact?: boolean }) {
                 rows={compact ? 2 : 5}
                 className="min-h-16 w-full resize-none bg-transparent py-2 text-base leading-6 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0"
               />
-              {mentionQuery(field.state.value) !== null && (() => {
-                const query = mentionQuery(field.state.value)!.toLowerCase();
-                const people = [CURRENT_USER, ...PEOPLE].filter((person, index, list) => list.findIndex((item) => item.id === person.id) === index && `${person.name} ${person.handle}`.toLowerCase().includes(query)).slice(0, 5);
-                return people.length ? <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-border bg-popover p-1 shadow-xl">
-                  {people.map((person) => <button key={person.id} type="button" className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onMouseDown={(event) => event.preventDefault()} onClick={() => { const next = field.state.value.replace(/(^|\s)@[a-zA-Z0-9_.-]*$/, `$1@${person.handle} `); field.handleChange(next); }}><AuthorAvatar author={person} className="size-8" /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{person.name}</span><span className="block truncate text-xs text-muted-foreground">@{person.handle}</span></span>{person.verified && <Icon icon="solar:verified-check-bold" className="size-4 text-primary" aria-hidden="true" />}</button>)}
-                </div> : null;
-              })()}
+              <MentionSuggestions value={field.state.value} onSelect={(handle) => field.handleChange(field.state.value.replace(/(^|\s)@[a-zA-Z0-9_.-]*$/, `$1@${handle} `))} />
               {!compact && <p className="text-right text-xs tabular-nums text-muted-foreground">{field.state.value.length}/500</p>}
             </div>
           )}
@@ -196,13 +193,15 @@ export function Composer({ compact = false }: { compact?: boolean }) {
       {media && (
         <div className="relative ml-14 overflow-hidden rounded-xl border bg-muted">
           <Image src={media} alt="Selected upload preview" width={720} height={420} unoptimized className="max-h-72 w-full object-cover" />
-          <Button type="button" variant="secondary" size="icon" className="absolute right-2 top-2 size-10 rounded-full" aria-label="Remove image" onClick={() => setMedia(undefined)}>
+          <Button type="button" variant="secondary" size="icon" className="absolute right-2 top-2 size-10 rounded-full" aria-label="Remove image" onClick={() => { setMedia(undefined); setMediaFile(undefined); }}>
             <Icon icon="solar:close-circle-bold" className="size-5" aria-hidden="true" />
           </Button>
         </div>
       )}
 
       {poll && <div className="ml-14 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2 text-sm"><Icon icon="solar:chart-square-linear" className="size-4 text-primary" aria-hidden="true" /><span className="min-w-0 flex-1 truncate">Poll: {poll.question}</span><Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Remove poll" onClick={() => setPoll(undefined)}><Icon icon="solar:close-circle-linear" className="size-4" aria-hidden="true" /></Button></div>}
+
+      {submitError && <p role="alert" className="ml-14 text-sm text-destructive">{submitError}</p>}
 
       <div className="relative flex items-center justify-between gap-3 pl-12">
         <input ref={fileInput} type="file" accept="image/*" className="sr-only" aria-label="Upload image" onChange={(event) => chooseFile(event.target.files?.[0])} />
@@ -232,8 +231,8 @@ export function Composer({ compact = false }: { compact?: boolean }) {
         </div>
         <form.Subscribe selector={(state) => [state.values.body, state.isSubmitting]}>
           {([body, isSubmitting]) => (
-            <Button type="submit" disabled={(!String(body).trim() && !media && !poll) || Boolean(isSubmitting)} className="h-10 min-w-20 rounded-xl bg-foreground px-5 text-background hover:bg-foreground/90">
-              {isSubmitting ? "Posting…" : "Post"}
+            <Button type="submit" disabled={(!String(body).trim() && !mediaFile && !poll) || Boolean(isSubmitting) || createMoment.isPending} aria-busy={Boolean(isSubmitting) || createMoment.isPending} className="h-10 min-w-20 rounded-xl bg-foreground px-5 text-background hover:bg-foreground/90">
+              {isSubmitting || createMoment.isPending ? "Posting…" : "Post"}
             </Button>
           )}
         </form.Subscribe>

@@ -8,12 +8,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AuthorAvatar } from "@/modules/feed";
-import { useProfileContext } from "../context/ProfileContext";
+import { ApiError } from "@/lib/api/client";
+import { useUpdateProfile } from "../hooks/useUpdateProfile";
 import type { ProfileData } from "../types";
 
 export function EditProfileDialog({ profile, open, onOpenChange }: { profile: ProfileData; open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { saveProfile } = useProfileContext();
+  const saveProfile = useUpdateProfile();
   const [draft, setDraft] = useState(profile);
+  const [formError, setFormError] = useState<string>();
   const avatarInput = useRef<HTMLInputElement>(null);
 
   function update<K extends keyof ProfileData>(key: K, value: ProfileData[K]) {
@@ -31,17 +33,22 @@ export function EditProfileDialog({ profile, open, onOpenChange }: { profile: Pr
     reader.readAsDataURL(file);
   }
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setFormError(undefined);
     const name = draft.name.trim();
     const handle = draft.handle.trim().replace(/^@/, "");
-    if (!name || !handle || !draft.bio?.trim()) {
-      toast.error("Name, username, and bio are required");
+    if (!name || !handle) {
+      setFormError("Name and username are required.");
       return;
     }
-    saveProfile({ ...draft, name, handle, bio: draft.bio.trim() });
-    onOpenChange(false);
-    toast.success("Profile updated");
+    try {
+      await saveProfile.mutateAsync({ ...draft, name, handle, bio: draft.bio?.trim() ?? "" });
+      onOpenChange(false);
+      toast.success("Profile updated");
+    } catch (error) {
+      setFormError(error instanceof ApiError ? error.fields.username ?? error.message : "Your profile could not be updated. Try again.");
+    }
   }
 
   return (
@@ -66,12 +73,12 @@ export function EditProfileDialog({ profile, open, onOpenChange }: { profile: Pr
             <ProfileField label="Name" htmlFor="profile-name"><Input id="profile-name" name="name" autoComplete="name" maxLength={50} value={draft.name} onChange={(event) => update("name", event.target.value)} className="h-10 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0" /></ProfileField>
             <ProfileField label="Username" htmlFor="profile-handle"><div className="flex items-center"><span className="mr-1 text-muted-foreground">@</span><Input id="profile-handle" name="username" autoComplete="username" maxLength={30} value={draft.handle} onChange={(event) => update("handle", event.target.value.replace(/[^a-zA-Z0-9._]/g, ""))} className="h-10 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0" /></div></ProfileField>
             <ProfileField label="Bio" htmlFor="profile-bio"><Textarea id="profile-bio" name="bio" maxLength={160} rows={3} value={draft.bio ?? ""} onChange={(event) => update("bio", event.target.value)} className="min-h-20 resize-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" /><p className="text-right text-xs tabular-nums text-muted-foreground">{draft.bio?.length ?? 0}/160</p></ProfileField>
-            <ProfileField label="Interests" htmlFor="profile-interests"><Input id="profile-interests" value={draft.interests} onChange={(event) => update("interests", event.target.value)} placeholder="AI, payments, product design" className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" /></ProfileField>
+            <ProfileField label="Interests" htmlFor="profile-interests"><Input id="profile-interests" value={draft.interestSlugs.join(", ")} onChange={(event) => { const slugs = event.target.value.split(",").map((value) => value.trim().toLowerCase()).filter(Boolean); setDraft((current) => ({ ...current, interests: slugs.join(", "), interestSlugs: slugs })); }} placeholder="technology, design" className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" /><p className="text-xs text-muted-foreground">Use interest slugs separated by commas.</p></ProfileField>
             <ProfileField label="Link" htmlFor="profile-link"><Input id="profile-link" type="url" inputMode="url" autoComplete="url" value={draft.website} onChange={(event) => update("website", event.target.value)} placeholder="https://your-site.com" className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" /></ProfileField>
             <ProfileField label="Location" htmlFor="profile-location"><Input id="profile-location" autoComplete="address-level2" value={draft.location} onChange={(event) => update("location", event.target.value)} className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0" /></ProfileField>
           </div>
 
-          <div className="shrink-0 border-t bg-background/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-sm"><Button type="submit" className="h-12 w-full rounded-full bg-gradient-to-r from-primary to-violet-600 font-semibold text-primary-foreground hover:opacity-90">Save profile</Button></div>
+          <div className="shrink-0 border-t bg-background/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur-sm">{formError && <p role="alert" className="mb-3 text-sm text-destructive">{formError}</p>}<Button type="submit" disabled={saveProfile.isPending} aria-busy={saveProfile.isPending} className="h-12 w-full rounded-full bg-gradient-to-r from-primary to-violet-600 font-semibold text-primary-foreground hover:opacity-90">{saveProfile.isPending ? "Saving..." : "Save profile"}</Button></div>
         </form>
       </DialogContent>
     </Dialog>

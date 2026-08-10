@@ -8,6 +8,7 @@ export type FeedAuthor = {
   followers: number;
   following: number;
   box: number;
+  relationship?: "none" | "pending" | "following" | "blocked" | "muted";
 };
 
 export type FeedPost = {
@@ -22,10 +23,25 @@ export type FeedPost = {
   replies: number;
   reposts: number;
   reward: number;
+  version?: number;
+  views?: number;
+  liked?: boolean;
+  bookmarked?: boolean;
+  reposted?: boolean;
+  isOwner?: boolean;
   media?: string[];
   card?: { eyebrow: string; title: string; description: string };
-  article?: { eyebrow: string; title: string; description: string; contentHtml: string; banner?: { image?: string; color: string; position: "left" | "center" | "right" } };
-  poll?: { question: string; options: { id: string; label: string; voterIds: string[] }[] };
+  article?: { eyebrow: string; title: string; description: string; contentHtml: string; banner?: { image?: string; color: string; position: "left" | "center" | "right" }; bannerMediaId?: string; draftVersion?: number; status?: "draft" | "published" };
+  poll?: {
+    question: string;
+    status: "open" | "closed";
+    voterVisibility: "public" | "anonymous";
+    allowVoteChange: boolean;
+    totalVotes: number;
+    viewerOptionId?: string;
+    endsAt?: string;
+    options: { id: string; label: string; voterIds: string[]; voteCount: number }[];
+  };
   quotedPost?: FeedPost;
 };
 
@@ -40,4 +56,6 @@ export type FeedReply = {
   createdAt: string;
   likes: number;
   media?: string;
+  liked?: boolean;
+  isOwner?: boolean;
 };

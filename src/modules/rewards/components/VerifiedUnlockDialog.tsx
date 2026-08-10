@@ -5,8 +5,8 @@ import { Icon } from "@iconify/react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
 import { VERIFIED_BOX_THRESHOLD } from "../constants";
-import { useBoxStore } from "../store/useBoxStore";
 
 const STORAGE_KEY = "paymoment-verified-achievement-seen-v2";
 
@@ -18,15 +18,11 @@ const BENEFITS = [
 
 export function VerifiedUnlockDialog() {
   const reduceMotion = useReducedMotion();
-  const balance = useBoxStore((state) => state.balance);
-  const eligible = balance >= VERIFIED_BOX_THRESHOLD;
+  const currentUser = useCurrentUser();
+  const eligible = Boolean(currentUser.verified);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!eligible) {
-      window.localStorage.removeItem(STORAGE_KEY);
-      return;
-    }
     if (eligible && window.localStorage.getItem(STORAGE_KEY) !== "true") {
       const frame = window.requestAnimationFrame(() => setOpen(true));
       return () => window.cancelAnimationFrame(frame);

@@ -11,15 +11,16 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { CURRENT_USER } from "../constants";
-import { useFeedStore } from "../store/useFeedStore";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
+import { postQueryKey, usePost } from "../hooks/useFeed";
+import { createArticle, updateArticle, uploadFeedMedia } from "../services/feed.service";
 import type { FeedPost } from "../types";
-import { useBoxStore } from "@/modules/rewards/store/useBoxStore";
 
 const ResizableArticleImage = TiptapImage.extend({
   addAttributes() {
@@ -36,31 +37,35 @@ const ResizableArticleImage = TiptapImage.extend({
 
 export function ArticleEditorPage({ postId }: { postId?: string }) {
   const router = useRouter();
-  const post = useFeedStore((state) => postId ? state.localPosts.find((item) => item.id === postId) : undefined);
-  const verified = useBoxStore((state) => state.balance >= 10);
+  const currentUser = useCurrentUser();
+  const articleQuery = usePost(postId ?? "");
+  const post = articleQuery.data;
+  const verified = Boolean(currentUser.verified);
 
   if (!verified) return <AccessMessage onBack={() => router.back()} />;
   if (postId) {
-    if (!post) return <AccessMessage title="Article not found" description="This article is not available in your local feed." onBack={() => router.back()} />;
-    if (post.author.id !== CURRENT_USER.id) return <AccessMessage title="You cannot edit this article" description="Only the author can edit an article." onBack={() => router.back()} />;
+    if (articleQuery.isLoading) return <section className="mx-auto mt-12 max-w-lg rounded-2xl border bg-card/50 p-8 text-center text-sm text-muted-foreground">Loading article...</section>;
+    if (!post || !post.article) return <AccessMessage title="Article not found" description="This article is unavailable or has been removed." onBack={() => router.back()} />;
+    if (post.author.id !== currentUser.id) return <AccessMessage title="You cannot edit this article" description="Only the author can edit an article." onBack={() => router.back()} />;
   }
 
   return <ArticleEditorForm key={post?.id ?? "new"} post={post} onBack={() => router.back()} onSaved={(id) => router.push(`/post/${id}`)} />;
 }
 
 function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack: () => void; onSaved: (id: string) => void }) {
-  const addPost = useFeedStore((state) => state.addPost);
-  const updatePost = useFeedStore((state) => state.updatePost);
+  const queryClient = useQueryClient();
   const article = post?.article;
   const [eyebrow, setEyebrow] = useState(article?.eyebrow ?? "PayBox for AI Agents");
   const [title, setTitle] = useState(article?.title ?? "");
   const [linkUrl, setLinkUrl] = useState("");
   const [bannerImage, setBannerImage] = useState(article?.banner?.image ?? "");
+  const [bannerFile, setBannerFile] = useState<File>();
   const [bannerColor, setBannerColor] = useState(article?.banner?.color ?? "#17181B");
   const [bannerPosition, setBannerPosition] = useState<"left" | "center" | "right">(article?.banner?.position ?? "center");
   const bannerInput = useRef<HTMLInputElement>(null);
   const inlineImageInput = useRef<HTMLInputElement>(null);
   const linkSelection = useRef<{ from: number; to: number } | null>(null);
+  const [submitError, setSubmitError] = useState<string>();
   const editor = useEditor({
     immediatelyRender: false,
     content: article?.contentHtml ?? "",
@@ -70,6 +75,25 @@ function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack:
         class: "article-editor-content min-h-[22rem] px-5 py-4 text-[16px] leading-8 outline-none [&_a]:!text-primary [&_a]:!underline [&_a]:underline-offset-4 [&_h2]:mt-7 [&_h2]:text-2xl [&_h2]:font-semibold [&_p]:my-4 [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_strong]:font-semibold",
       },
     },
+  });
+
+  const saveArticle = useMutation({
+    mutationFn: async () => {
+      const cleanTitle = title.trim();
+      const text = editor?.getText().trim() ?? "";
+      if (!cleanTitle || !text || !editor) throw new Error("Add a title and some article content first.");
+      const description = text.length > 180 ? `${text.slice(0, 177).trimEnd()}...` : text;
+      const banner = bannerFile ? await uploadFeedMedia(bannerFile, "article") : undefined;
+      const input = { eyebrow: eyebrow.trim() || "PayBox for AI Agents", title: cleanTitle, description, contentHtml: editor.getHTML(), bannerMediaId: banner?.id ?? article?.bannerMediaId, bannerColor, bannerPosition };
+      return post ? updateArticle(post.id, { ...input, draftVersion: article?.draftVersion ?? 1 }) : createArticle({ ...input, publish: true });
+    },
+    onSuccess: (saved) => {
+      queryClient.setQueryData(postQueryKey(saved.id), saved);
+      void queryClient.invalidateQueries({ queryKey: ["paymoment", "feed"] });
+      toast.success(post ? "Article updated" : "Article published");
+      onSaved(saved.id);
+    },
+    onError: (error) => setSubmitError(error instanceof Error ? error.message : "The article could not be saved."),
   });
 
   function readImage(file: File | undefined, onLoad: (source: string) => void) {
@@ -82,24 +106,8 @@ function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack:
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const cleanTitle = title.trim();
-    const text = editor?.getText().trim() ?? "";
-    if (!cleanTitle || !text || !editor) {
-      toast.error("Add a title and some article content first");
-      return;
-    }
-    const description = text.length > 180 ? `${text.slice(0, 177).trimEnd()}...` : text;
-    const articleData = { eyebrow: eyebrow.trim() || "PayBox for AI Agents", title: cleanTitle, description, contentHtml: editor.getHTML(), banner: { image: bannerImage || undefined, color: bannerColor, position: bannerPosition } };
-    const id = post?.id ?? `article-${crypto.randomUUID()}`;
-
-    if (post) {
-      updatePost(id, { body: description, article: articleData });
-      toast.success("Article updated");
-    } else {
-      addPost({ id, author: CURRENT_USER, body: description, createdAt: "now", likes: 0, replies: 0, reposts: 0, reward: 10, article: articleData });
-      toast.success("Article published", { description: "+10 Box added to your pending rewards." });
-    }
-    onSaved(id);
+    setSubmitError(undefined);
+    saveArticle.mutate();
   }
 
   function applyLink() {
@@ -129,7 +137,7 @@ function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack:
           <div className="space-y-5 p-5 sm:p-8">
             <div className="space-y-1.5"><label htmlFor="article-eyebrow" className="text-sm font-semibold">Eyebrow</label><Input id="article-eyebrow" value={eyebrow} onChange={(event) => setEyebrow(event.target.value)} maxLength={80} placeholder="PayBox for AI Agents" /></div>
             <div className="space-y-1.5"><label htmlFor="article-title" className="text-sm font-semibold">Title</label><Input id="article-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="Give your agent a wallet it can actually use." className="h-14 text-xl font-medium" autoFocus /></div>
-            <div className="space-y-3"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Article banner</p><p className="text-xs text-muted-foreground">Add a cover image and choose its visual position.</p></div><input ref={bannerInput} type="file" accept="image/*" className="sr-only" onChange={(event) => readImage(event.target.files?.[0], setBannerImage)} /><Button type="button" variant="outline" className="h-10 rounded-full" onClick={() => bannerInput.current?.click()}><Icon icon="solar:gallery-add-linear" className="size-4" aria-hidden="true" /> {bannerImage ? "Change image" : "Add image"}</Button></div><div className="relative h-36 overflow-hidden rounded-xl border" style={{ backgroundColor: bannerColor, backgroundImage: bannerImage ? `url(${bannerImage})` : undefined, backgroundPosition: bannerPosition, backgroundSize: "cover" }}><div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" /><span className="absolute bottom-3 left-3 text-xs font-medium text-white">Banner preview</span></div><div className="flex flex-wrap items-center gap-3"><label className="flex items-center gap-2 text-xs text-muted-foreground">Banner color <input type="color" value={bannerColor} onChange={(event) => setBannerColor(event.target.value)} className="size-8 cursor-pointer rounded-md border-0 bg-transparent p-0" /></label><label className="flex items-center gap-2 text-xs text-muted-foreground">Position <select value={bannerPosition} onChange={(event) => setBannerPosition(event.target.value as typeof bannerPosition)} className="h-9 rounded-lg border bg-background px-2 text-xs text-foreground"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label></div></div>
+            <div className="space-y-3"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Article banner</p><p className="text-xs text-muted-foreground">Add a cover image and choose its visual position.</p></div><input ref={bannerInput} type="file" accept="image/*" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; readImage(file, setBannerImage); setBannerFile(file); }} /><Button type="button" variant="outline" className="h-10 rounded-full" onClick={() => bannerInput.current?.click()}><Icon icon="solar:gallery-add-linear" className="size-4" aria-hidden="true" /> {bannerImage ? "Change image" : "Add image"}</Button></div><div className="relative h-36 overflow-hidden rounded-xl border" style={{ backgroundColor: bannerColor, backgroundImage: bannerImage ? `url(${bannerImage})` : undefined, backgroundPosition: bannerPosition, backgroundSize: "cover" }}><div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" /><span className="absolute bottom-3 left-3 text-xs font-medium text-white">Banner preview</span></div><div className="flex flex-wrap items-center gap-3"><label className="flex items-center gap-2 text-xs text-muted-foreground">Banner color <input type="color" value={bannerColor} onChange={(event) => setBannerColor(event.target.value)} className="size-8 cursor-pointer rounded-md border-0 bg-transparent p-0" /></label><label className="flex items-center gap-2 text-xs text-muted-foreground">Position <select value={bannerPosition} onChange={(event) => setBannerPosition(event.target.value as typeof bannerPosition)} className="h-9 rounded-lg border bg-background px-2 text-xs text-foreground"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label></div></div>
             <div className="overflow-x-auto rounded-xl border bg-background/70 [&_.tableWrapper]:my-5 [&_.tableWrapper]:overflow-x-auto [&_table]:!border [&_table]:!border-white/35 [&_th]:!border [&_th]:!border-white/35 [&_th]:!bg-primary/10 [&_td]:!border [&_td]:!border-white/35">
               <div className="sticky top-3 z-10 mx-2 mt-2 flex flex-wrap items-center gap-0.5 rounded-xl border bg-popover/95 p-1.5 shadow-lg backdrop-blur-xl">
                 <select aria-label="Text style" defaultValue="text" onChange={(event) => event.target.value === "heading" ? editor?.chain().focus().toggleHeading({ level: 2 }).run() : editor?.chain().focus().setParagraph().run()} className="h-9 rounded-lg bg-transparent px-2 text-sm font-medium text-foreground outline-none hover:bg-muted"><option value="text">Text</option><option value="heading">Heading</option></select>
@@ -159,7 +167,7 @@ function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack:
                 </DropdownMenu>
                 {editor?.isActive("image") && <><span className="px-1 text-[11px] text-muted-foreground">Image</span>{["25%", "50%", "75%", "100%"].map((width) => <ToolbarButton key={width} label={`Set image width ${width}`} active={editor.getAttributes("image").width === width} onClick={() => editor.chain().focus().updateAttributes("image", { width }).run()}>{width}</ToolbarButton>)}</>}
                 <ToolbarButton label="Insert table" onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>Table</ToolbarButton>
-                <input ref={inlineImageInput} type="file" accept="image/*" className="sr-only" onChange={(event) => readImage(event.target.files?.[0], (source) => editor?.chain().focus().setImage({ src: source, alt: "Article image" }).run())} />
+                <input ref={inlineImageInput} type="file" accept="image/*" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) { toast.error("Choose an image under 5 MB"); return; } void uploadFeedMedia(file, "article").then((media) => editor?.chain().focus().setImage({ src: media.gatewayUrl, alt: "Article image" }).run()).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "The image could not be uploaded.")); }} />
                 <ToolbarButton label="Insert image" onClick={() => inlineImageInput.current?.click()}><Icon icon="solar:gallery-add-linear" className="size-4" aria-hidden="true" /></ToolbarButton>
                 <ToolbarButton label="Undo" onClick={() => editor?.chain().focus().undo().run()}>↶</ToolbarButton>
                 <ToolbarButton label="Redo" onClick={() => editor?.chain().focus().redo().run()}>↷</ToolbarButton>
@@ -168,9 +176,10 @@ function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack:
             </div>
             <p className="text-xs text-muted-foreground">Use headings and lists to make longer articles easy to scan.</p>
           </div>
+          {submitError && <p role="alert" className="px-4 text-sm text-destructive sm:px-8">{submitError}</p>}
           <footer className="flex flex-col-reverse gap-2 border-t bg-background/35 p-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="ghost" className="h-11 rounded-full px-5" onClick={onBack}>Cancel</Button>
-            <Button type="submit" className="h-11 rounded-full px-6" disabled={!title.trim() || !editor?.getText().trim()}>{post ? "Save changes" : "Publish article"}</Button>
+            <Button type="submit" className="h-11 rounded-full px-6" disabled={!title.trim() || !editor?.getText().trim() || saveArticle.isPending} aria-busy={saveArticle.isPending}>{saveArticle.isPending ? "Saving..." : post ? "Save changes" : "Publish article"}</Button>
           </footer>
         </form>
       </div>

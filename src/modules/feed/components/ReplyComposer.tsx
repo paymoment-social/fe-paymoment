@@ -7,8 +7,9 @@ import { useForm } from "@tanstack/react-form";
 import { type CSSProperties, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { CURRENT_USER } from "../constants";
-import { useFeedStore } from "../store/useFeedStore";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
+import { useCreateReply } from "../hooks/usePostMutations";
+import { uploadFeedMedia } from "../services/feed.service";
 import { AuthorAvatar } from "./AuthorAvatar";
 
 const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
@@ -35,32 +36,34 @@ type ReplyComposerProps = {
 };
 
 export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyComposerProps) {
-  const addReply = useFeedStore((state) => state.addReply);
+  const currentUser = useCurrentUser();
+  const createReply = useCreateReply(postId, parentId);
   const fileInput = useRef<HTMLInputElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [media, setMedia] = useState<string>();
+  const [mediaFile, setMediaFile] = useState<File>();
   const [showEmoji, setShowEmoji] = useState(false);
+  const [submitError, setSubmitError] = useState<string>();
 
   const form = useForm({
     defaultValues: { body: "" },
     onSubmit: async ({ value }) => {
       const body = value.body.trim();
-      if (!body) return;
-
-      addReply({
-        id: `reply-${crypto.randomUUID()}`,
-        postId,
-        parentId,
-        author: CURRENT_USER,
-        body,
-        media,
-        createdAt: "now",
-        likes: 0,
-      });
-      form.reset();
-      setMedia(undefined);
-      onSubmitted?.();
-      toast.success("Reply posted");
+      if (!body && !mediaFile) return;
+      setSubmitError(undefined);
+      try {
+        const uploaded = mediaFile ? await uploadFeedMedia(mediaFile, "reply") : undefined;
+        await createReply.mutateAsync({ body, mediaAssetIds: uploaded ? [uploaded.id] : [] });
+        form.reset();
+        setMedia(undefined);
+        setMediaFile(undefined);
+        onSubmitted?.();
+        toast.success("Reply posted");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Your reply could not be posted.";
+        setSubmitError(message);
+        toast.error(message);
+      }
     },
   });
 
@@ -73,6 +76,7 @@ export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyCo
     const reader = new FileReader();
     reader.onload = () => setMedia(String(reader.result));
     reader.readAsDataURL(file);
+    setMediaFile(file);
   }
 
   return (
@@ -85,7 +89,7 @@ export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyCo
       className="scroll-mt-20 border-t p-4"
     >
       <div className="flex items-start gap-3">
-        <AuthorAvatar author={CURRENT_USER} className="size-10" />
+        <AuthorAvatar author={currentUser} className="size-10" />
         <div className="min-w-0 flex-1">
           <form.Field name="body">
             {(field) => (
@@ -111,12 +115,13 @@ export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyCo
           {media && (
             <div className="relative mt-2 w-fit overflow-hidden rounded-xl border">
               <Image src={media} alt="Reply upload preview" width={180} height={120} unoptimized className="h-24 w-36 object-cover" />
-              <Button type="button" size="icon" variant="secondary" className="absolute right-1 top-1 size-10 rounded-full" aria-label="Remove image" onClick={() => setMedia(undefined)}>
+              <Button type="button" size="icon" variant="secondary" className="absolute right-1 top-1 size-10 rounded-full" aria-label="Remove image" onClick={() => { setMedia(undefined); setMediaFile(undefined); }}>
                 <Icon icon="solar:close-circle-bold" className="size-5" aria-hidden="true" />
               </Button>
             </div>
           )}
 
+          {submitError && <p role="alert" className="mt-2 text-sm text-destructive">{submitError}</p>}
           <div className="mt-2 flex items-center justify-between">
             <div className="flex">
               <input ref={fileInput} type="file" accept="image/*" className="sr-only" onChange={(event) => chooseFile(event.target.files?.[0])} />
@@ -150,8 +155,8 @@ export function ReplyComposer({ postId, parentId, handle, onSubmitted }: ReplyCo
             </div>
             <form.Subscribe selector={(state) => [state.values.body, state.isSubmitting]}>
               {([body, submitting]) => (
-                <Button type="submit" className="h-10 rounded-full px-5" disabled={!String(body).trim() || Boolean(submitting)} aria-busy={Boolean(submitting)}>
-                  {submitting ? "Replying..." : "Reply"}
+                <Button type="submit" className="h-10 rounded-full px-5" disabled={(!String(body).trim() && !mediaFile) || Boolean(submitting) || createReply.isPending} aria-busy={Boolean(submitting) || createReply.isPending}>
+                  {submitting || createReply.isPending ? "Replying..." : "Reply"}
                 </Button>
               )}
             </form.Subscribe>
