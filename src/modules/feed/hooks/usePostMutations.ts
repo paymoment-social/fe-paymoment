@@ -10,13 +10,23 @@ import { repliesQueryKey } from "./useReplies";
 
 type FeedPage = { posts: FeedPost[]; nextCursor: string | null };
 
+function isFeedInfiniteData(value: unknown): value is InfiniteData<FeedPage> {
+  return Boolean(value && typeof value === "object" && "pages" in value && Array.isArray((value as { pages?: unknown }).pages));
+}
+
 function updatePostCaches(queryClient: ReturnType<typeof useQueryClient>, postId: string, update: (post: FeedPost) => FeedPost) {
-  queryClient.setQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY }, (current) => current ? { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.map((post) => post.id === postId ? update(post) : post) })) } : current);
+  queryClient.setQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY }, (current) => {
+    if (!isFeedInfiniteData(current)) return current;
+    return { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.map((post) => post.id === postId ? update(post) : post) })) };
+  });
   queryClient.setQueryData<FeedPost>(postQueryKey(postId), (current) => current ? update(current) : current);
 }
 
 function updateAuthorCaches(queryClient: ReturnType<typeof useQueryClient>, userId: string, update: (post: FeedPost) => FeedPost) {
-  queryClient.setQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY }, (current) => current ? { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.map((post) => post.author.id === userId ? update(post) : post) })) } : current);
+  queryClient.setQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY }, (current) => {
+    if (!isFeedInfiniteData(current)) return current;
+    return { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.map((post) => post.author.id === userId ? update(post) : post) })) };
+  });
   queryClient.setQueriesData<FeedPost>({ queryKey: ["paymoment", "post"] }, (current) => current?.author.id === userId ? update(current) : current);
 }
 
@@ -25,7 +35,10 @@ export function useCreateMoment() {
   return useMutation({
     mutationFn: createPost,
     onSuccess: (post) => {
-      queryClient.setQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY }, (current) => current ? { ...current, pages: current.pages.map((page, index) => index === 0 ? { ...page, posts: [post, ...page.posts.filter((item) => item.id !== post.id)] } : page) } : current);
+      queryClient.setQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY }, (current) => {
+        if (!isFeedInfiniteData(current)) return current;
+        return { ...current, pages: current.pages.map((page, index) => index === 0 ? { ...page, posts: [post, ...page.posts.filter((item) => item.id !== post.id)] } : page) };
+      });
       queryClient.setQueryData(postQueryKey(post.id), post);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY }),
@@ -162,7 +175,10 @@ export function useDeleteMoment() {
   return useMutation({
     mutationFn: deletePost,
     onSuccess: (_result, postId) => {
-      queryClient.setQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY }, (current) => current ? { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.filter((post) => post.id !== postId) })) } : current);
+      queryClient.setQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY }, (current) => {
+        if (!isFeedInfiniteData(current)) return current;
+        return { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.filter((post) => post.id !== postId) })) };
+      });
       queryClient.removeQueries({ queryKey: postQueryKey(postId) });
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY }),

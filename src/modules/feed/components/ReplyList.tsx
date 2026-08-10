@@ -10,6 +10,8 @@ import type { FeedReply } from "../types";
 import { AuthorAvatar, VerifiedMark } from "./AuthorAvatar";
 import { ReplyComposer } from "./ReplyComposer";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function ReplyList({ postId }: { postId: string }) {
   const replies = useReplies(postId);
 
@@ -24,6 +26,7 @@ function ReplyThread({ postId, reply, depth = 0 }: { postId: string; reply: Feed
   const [replying, setReplying] = useState(false);
   const children = useReplies(postId, reply.id);
   const likeReply = useReplyLike(postId, reply.parentId);
+  const persisted = UUID_PATTERN.test(reply.id);
 
   return <>
     <article className="flex gap-3 border-t p-5" style={{ marginLeft: depth ? `${Math.min(depth, 2) * 2}rem` : undefined }}>
@@ -33,8 +36,8 @@ function ReplyThread({ postId, reply, depth = 0 }: { postId: string; reply: Feed
         <p className="mt-1 whitespace-pre-line text-[15px] leading-6">{reply.body}</p>
         {reply.media && <Image src={reply.media} alt="Reply attachment" width={560} height={360} unoptimized className="mt-3 max-h-64 w-auto rounded-xl border object-cover" />}
         <div className="mt-2 flex gap-1">
-          <Button variant="ghost" size="icon" className={reply.liked ? "size-9 text-rose-400" : "size-9"} aria-label={reply.liked ? "Unlike reply" : "Like reply"} disabled={likeReply.isPending} onClick={() => likeReply.mutate({ replyId: reply.id, enabled: !reply.liked })}><Icon icon={reply.liked ? "solar:heart-bold" : "solar:heart-linear"} className="size-5" aria-hidden="true" /><span className="sr-only">{reply.likes} likes</span></Button>
-          <Button variant={replying ? "secondary" : "ghost"} size="sm" className="h-9 gap-1.5 rounded-full px-3 text-xs" aria-expanded={replying} onClick={() => setReplying((value) => !value)}><Icon icon="solar:chat-round-linear" className="size-4" aria-hidden="true" />Reply</Button>
+          <Button variant="ghost" size="icon" className={reply.liked ? "size-9 text-rose-400" : "size-9"} aria-label={reply.liked ? "Unlike reply" : "Like reply"} disabled={!persisted || likeReply.isPending} onClick={() => likeReply.mutate({ replyId: reply.id, enabled: !reply.liked })}><Icon icon={reply.liked ? "solar:heart-bold" : "solar:heart-linear"} className="size-5" aria-hidden="true" /><span className="sr-only">{reply.likes} likes</span></Button>
+          <Button variant={replying ? "secondary" : "ghost"} size="sm" className="h-9 gap-1.5 rounded-full px-3 text-xs" aria-expanded={replying} disabled={!persisted} onClick={() => setReplying((value) => !value)}><Icon icon="solar:chat-round-linear" className="size-4" aria-hidden="true" />Reply</Button>
         </div>
         {replying && <ReplyComposer postId={postId} parentId={reply.id} handle={`@${reply.author.handle}`} onSubmitted={() => setReplying(false)} />}
       </div>

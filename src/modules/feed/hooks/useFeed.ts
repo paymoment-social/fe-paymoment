@@ -21,9 +21,11 @@ export function useFeed(mode: "latest" | "top" | "for_you" = "latest") {
 
 export function useFeedUpdateCount(mode: "latest" | "top" | "for_you", since?: string) {
   return useQuery({
-    queryKey: [...FEED_QUERY_KEY, "updates", mode, since],
+    // Keep this outside FEED_QUERY_KEY. Mutations update the infinite feed
+    // cache by prefix and must never treat this numeric result as feed pages.
+    queryKey: ["paymoment", "feed-updates", mode, since],
     queryFn: () => getNewFeedPostCount(since!),
-    enabled: mode === "latest" && Boolean(since),
+    enabled: Boolean(since),
     staleTime: 0,
     refetchInterval: 30_000,
     refetchOnWindowFocus: "always",

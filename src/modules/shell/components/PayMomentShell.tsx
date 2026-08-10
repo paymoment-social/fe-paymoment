@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { BookmarksProvider, BookmarksView } from "@/modules/bookmarks";
 import { DiscoverProvider, DiscoverView } from "@/modules/discover";
@@ -38,7 +36,6 @@ function ShellLayout({ section }: { section: ShellSection }) {
   useRealtime();
   const title = useSectionTitle(section);
   const { setOpen } = useComposer();
-  const [feedOrder, setFeedOrder] = useState<"Latest" | "Top" | "For you">("Latest");
   const isMessages = section === "messages";
   return (
     <>
@@ -47,9 +44,9 @@ function ShellLayout({ section }: { section: ShellSection }) {
         <main className={cn("min-w-0", isMessages ? "flex h-[calc(100dvh-4rem)] min-h-0 w-full flex-col overflow-hidden py-4 lg:h-dvh lg:py-6 xl:col-span-2" : "py-5 lg:py-6")}>
           <header className="sticky top-0 z-20 -mx-1 mb-4 flex min-h-11 items-center justify-between bg-background/90 px-1 backdrop-blur-xl">
             <div className="flex min-w-0 items-center gap-3"><div className="lg:hidden"><ProductLogo compact /></div><h1 className="truncate text-xl font-semibold tracking-[-0.025em] lg:text-2xl">{title}</h1></div>
-            {section === "for-you" ? <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" className="h-10 gap-3 px-3 text-sm font-normal" aria-label={`Feed order: ${feedOrder}`} />}>{feedOrder}<Icon icon="solar:alt-arrow-down-linear" className="size-4" aria-hidden="true" /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-36 p-1.5">{(["Latest", "Top", "For you"] as const).map((option) => <DropdownMenuItem key={option} className="min-h-10 px-3" onClick={() => setFeedOrder(option)}>{option}{feedOrder === option && <Icon icon="solar:check-circle-bold" className="ml-auto size-4 text-primary" aria-hidden="true" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu> : <Button variant="ghost" size="icon" className="size-10 rounded-full" aria-label="Page options"><Icon icon="solar:menu-dots-circle-linear" className="size-6" aria-hidden="true" /></Button>}
+            {section !== "for-you" && <Button variant="ghost" size="icon" className="size-10 rounded-full" aria-label="Page options"><Icon icon="solar:menu-dots-circle-linear" className="size-6" aria-hidden="true" /></Button>}
           </header>
-          <div className={cn(isMessages && "min-h-0 flex-1")}><SectionContent section={section} feedMode={feedOrder === "Top" ? "top" : feedOrder === "For you" ? "for_you" : "latest"} /></div>
+          <div className={cn(isMessages && "min-h-0 flex-1")}><SectionContent section={section} /></div>
         </main>
         {!isMessages && <RightRail />}
       </div>
@@ -61,7 +58,7 @@ function ShellLayout({ section }: { section: ShellSection }) {
   );
 }
 
-function SectionContent({ section, feedMode }: { section: ShellSection; feedMode: "latest" | "top" | "for_you" }) {
+function SectionContent({ section }: { section: ShellSection }) {
   const session = useSession();
   if (section === "moderation") {
     const canModerate = session.data?.roles.some((role) => role === "moderator" || role === "admin") ?? false;
@@ -78,6 +75,6 @@ function SectionContent({ section, feedMode }: { section: ShellSection; feedMode
     case "connections": return <AgentConnectionsView />;
     case "bookmarks": return <BookmarksView />;
     case "likes": return <LikesView />;
-    default: return <FeedView mode={feedMode} />;
+    default: return <FeedView mode="for_you" />;
   }
 }

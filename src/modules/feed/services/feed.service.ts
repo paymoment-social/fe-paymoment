@@ -27,6 +27,7 @@ type ApiPost = {
   poll: null | { question: string; status: "open" | "closed"; voter_visibility: "public" | "anonymous"; allow_vote_change: boolean; total_votes: number; ends_at: string | null; viewer_option_id: string | null; options?: Array<{ id: string; label: string; position: number; vote_count: number }> | null };
   quoted_post: ApiPost | null;
   created_at: string;
+  published_at?: string | null;
   is_owner: boolean;
 };
 
@@ -79,7 +80,7 @@ export function mapApiPost(post: ApiPost): FeedPost {
     author: mapAuthor(post.author),
     body: post.body,
     createdAt: relativeTime(post.created_at),
-    createdAtValue: post.created_at,
+    createdAtValue: post.published_at ?? post.created_at,
     likes: post.counts.likes,
     replies: post.counts.replies,
     reposts: post.counts.reposts,

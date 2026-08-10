@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -39,7 +39,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
   const followMutation = useUserFollow();
   const deleteMutation = useDeleteMoment();
   const rewardMutation = useClaimMomentReward();
-  useEffect(() => setRewardClaimed(Boolean(post.rewardClaimed)), [post.id, post.rewardClaimed]);
+  const rewardIsClaimed = rewardClaimed || Boolean(post.rewardClaimed);
   const isVerified = post.author.id === currentUser.id ? currentUser.verified : post.author.verified;
 
   async function shareMoment() {
@@ -112,9 +112,9 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
         </div>
         <div className="flex items-center gap-2">
           {post.views ? <span className="hidden text-xs text-muted-foreground sm:inline">{formatEngagement(post.views)} views</span> : null}
-          {post.isOwner && <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 text-primary hover:bg-primary/10 hover:text-primary" disabled={rewardClaimed || rewardMutation.isPending} aria-label={rewardClaimed ? "Moment reward claimed" : "Claim 10 Box reward"} onClick={() => rewardMutation.mutate(post.id, { onSuccess: (result) => { setRewardClaimed(true); toast.success(result.data.claimed ? "+10 Box claimed" : "Reward already claimed"); }, onError: (error) => toast.error(error.message) })}>
-            <Icon icon={rewardClaimed ? "solar:check-circle-bold" : "solar:box-bold-duotone"} className="size-4" aria-hidden="true" />
-            <span className="font-mono text-xs tabular-nums">{rewardMutation.isPending ? "Claiming..." : rewardClaimed ? "Claimed" : "+10 BOX"}</span>
+          {post.isOwner && <Button type="button" variant="ghost" size="sm" className="h-9 gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 text-primary hover:bg-primary/10 hover:text-primary" disabled={rewardIsClaimed || rewardMutation.isPending} aria-label={rewardIsClaimed ? "Moment reward claimed" : "Claim 10 Box reward"} onClick={() => rewardMutation.mutate(post.id, { onSuccess: (result) => { setRewardClaimed(true); toast.success(result.data.claimed ? "+10 Box claimed" : "Reward already claimed"); }, onError: (error) => toast.error(error.message) })}>
+            <Icon icon={rewardIsClaimed ? "solar:check-circle-bold" : "solar:box-bold-duotone"} className="size-4" aria-hidden="true" />
+            <span className="font-mono text-xs tabular-nums">{rewardMutation.isPending ? "Claiming..." : rewardIsClaimed ? "Claimed" : "+10 BOX"}</span>
           </Button>}
         </div>
       </footer>

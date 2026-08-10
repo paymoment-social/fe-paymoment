@@ -9,5 +9,5 @@ export async function getBookmarks(filter: BookmarkFilter, cursor?: string): Pro
   const params = new URLSearchParams({ filter, limit: "20" });
   if (cursor) params.set("cursor", cursor);
   const response = await apiRequest<{ data: ApiPost[]; meta: { next_cursor: string | null } }>(`/api/v1/bookmarks?${params}`);
-  return { posts: response.data.map(mapApiPost), nextCursor: response.meta.next_cursor };
+  return { posts: (response.data ?? []).map(mapApiPost), nextCursor: response.meta.next_cursor };
 }

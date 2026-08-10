@@ -120,10 +120,12 @@ function InstructionStep({ number, title, children }: { number: string; title: s
   return <li className="flex gap-3"><span className="grid size-6 shrink-0 place-items-center rounded-full border border-border text-[11px] text-muted-foreground">{number}</span><div className="min-w-0"><p className="font-medium">{title}</p>{children}</div></li>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ChatGptMark() {
   return <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24" fill="none"><path d="M12 3.1a4.1 4.1 0 0 1 7.08 2.82v.4a4.1 4.1 0 0 1 2.05 7.64l-.35.2a4.1 4.1 0 0 1-4.1 6.94l-.35-.2a4.1 4.1 0 0 1-7.08 2.82l-.35-.2a4.1 4.1 0 0 1-7.08-2.82v-.4a4.1 4.1 0 0 1-2.05-7.64l.35-.2a4.1 4.1 0 0 1 4.1-6.94l.35.2A4.1 4.1 0 0 1 12 3.1Z" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round"/><path d="m8.15 7.05 7.7 4.45v5.05M15.85 7.05 8.15 11.5v5.05M5.6 10.05v3.9l4.45 2.6M18.4 10.05v3.9l-4.45 2.6M12 5.6v4.95l4.45 2.6M12 18.4v-4.95l-4.45-2.6" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ClaudeMark() {
   return <svg aria-hidden="true" className="size-5 text-[#D97757]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.75c.5 4.5 2.05 7.15 6.25 8.25-4.2 1.1-5.75 3.75-6.25 8.25-.5-4.5-2.05-7.15-6.25-8.25C9.95 8.9 11.5 6.25 12 1.75ZM4.25 14.2c.25 2.35 1.05 3.75 3.25 4.3-2.2.55-3 1.95-3.25 4.3-.25-2.35-1.05-3.75-3.25-4.3 2.2-.55 3-1.95 3.25-4.3ZM19.75 14.2c.25 2.35 1.05 3.75 3.25 4.3-2.2.55-3 1.95-3.25 4.3-.25-2.35-1.05-3.75-3.25-4.3 2.2-.55 3-1.95 3.25-4.3Z"/></svg>;
 }
