@@ -9,7 +9,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "PayMoment - Share moments. Earn Box.",
-  description: "The social layer for PayBox builders, creators, and payment moments.",
+    description: "The social layer for PayMoment builders, creators, and payment moments.",
   applicationName: "PayMoment",
   manifest: "/manifest.webmanifest",
   icons: {

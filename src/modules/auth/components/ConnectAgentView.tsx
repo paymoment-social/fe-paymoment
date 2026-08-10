@@ -30,7 +30,7 @@ export function ConnectAgentView() {
           <div className="rounded-2xl border border-border bg-card/70 p-5 shadow-[0_18px_60px_color-mix(in_oklab,var(--background)_55%,transparent)] sm:p-7">
             <div className="flex items-start gap-3">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary"><Sparkles className="size-4" aria-hidden="true" /></div>
-              <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">PayBox · Setup</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.065em] sm:text-4xl">Connect your agent</h1><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Bring PayBox into the tools you already use. Connect once, then authorize access securely.</p></div>
+              <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">PayMoment · Setup</p><h1 className="mt-1 text-3xl font-semibold tracking-[-0.065em] sm:text-4xl">Connect your agent</h1><p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">Bring PayMoment into the tools you already use. Connect once, then authorize access securely.</p></div>
             </div>
 
             <ConnectAgentSetup />
@@ -101,12 +101,12 @@ function McpInstructions({ provider }: { provider: "chatgpt" | "claude" }) {
   return <DialogContent className="max-h-[90dvh] max-w-4xl gap-0 overflow-y-auto border-border bg-card p-0">
     <DialogHeader className="border-b border-border px-6 py-5 pr-12">
       <DialogTitle className="text-lg font-semibold">Connect {isChatGpt ? "ChatGPT" : "Claude"}</DialogTitle>
-      <DialogDescription className="mt-1">Follow these steps to authorize your PayBox agent.</DialogDescription>
+      <DialogDescription className="mt-1">Follow these steps to authorize your PayMoment agent.</DialogDescription>
     </DialogHeader>
     <div className="grid gap-6 px-6 py-6 md:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)] md:items-stretch">
       <ol className="space-y-5 text-sm">
         <InstructionStep number="1" title="Copy the URL below"><div className="mt-2 flex items-center gap-2 rounded-xl border border-border bg-background p-2"><code className="min-w-0 flex-1 truncate px-2 text-xs text-muted-foreground">{MCP_URL}</code><Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => void copyUrl()}>{copied ? <Check className="size-3.5" aria-hidden="true" /> : <Clipboard className="size-3.5" aria-hidden="true" />} {copied ? "Copied" : "Copy"}</Button></div></InstructionStep>
-        <InstructionStep number="2" title={`Open ${isChatGpt ? "ChatGPT" : "Claude"} on the web`}><p className="mt-1 text-muted-foreground">Open the web app in your browser and sign in to the account where you want to use PayBox.</p><a href={isChatGpt ? "https://chatgpt.com/" : "https://claude.ai/"} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Open {isChatGpt ? "ChatGPT" : "Claude"} <ExternalLink className="size-3.5" aria-hidden="true" /></a></InstructionStep>
+        <InstructionStep number="2" title={`Open ${isChatGpt ? "ChatGPT" : "Claude"} on the web`}><p className="mt-1 text-muted-foreground">Open the web app in your browser and sign in to the account where you want to use PayMoment.</p><a href={isChatGpt ? "https://chatgpt.com/" : "https://claude.ai/"} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Open {isChatGpt ? "ChatGPT" : "Claude"} <ExternalLink className="size-3.5" aria-hidden="true" /></a></InstructionStep>
         <InstructionStep number="3" title="Add a custom connector"><p className="mt-1 text-muted-foreground">Open the connector, plugin, or integrations settings, paste the copied URL, and choose OAuth when asked.</p></InstructionStep>
         <InstructionStep number="4" title="Save and authorize"><p className="mt-1 text-muted-foreground">Save the connector, connect it, and complete the PayMoment authorization screen.</p></InstructionStep>
       </ol>

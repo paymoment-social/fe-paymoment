@@ -33,7 +33,7 @@ export function LoginView() {
         </div>
 
         <div className="relative z-10 max-w-xl p-10 pb-14 xl:p-12 xl:pb-16">
-          <p className="mb-4 text-sm font-medium uppercase tracking-[0.18em] text-primary/80">The social layer for PayBox</p>
+            <p className="mb-4 text-sm font-medium uppercase tracking-[0.18em] text-primary/80">The social layer for PayMoment</p>
           <h1 className="max-w-lg text-5xl font-semibold leading-[0.98] tracking-[-0.065em] text-white xl:text-6xl">
             Turn every payment into a <span className="text-primary">Moment.</span>
           </h1>
@@ -68,7 +68,7 @@ export function LoginView() {
           <div className="space-y-4">
             <button type="button" disabled className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl border border-primary/25 bg-primary/10 px-5 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed">
               <span>Continue with</span>
-              <Image src="/paybox-lockup-white.svg" alt="PayBox" width={72} height={17} className="object-contain" />
+              <Image src="/paybox-lockup-white.svg" alt="PayMoment" width={72} height={17} className="object-contain" />
               <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Coming soon</span>
             </button>
             <Link href={`${API_URL}/api/v1/auth/google?next=${encodeURIComponent(next)}`} onClick={() => setIsStartingAuth(true)} aria-busy={isStartingAuth} className="flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">

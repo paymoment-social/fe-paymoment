@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "PayMoment - Share moments. Earn Box.",
     short_name: "PayMoment",
-    description: "The social layer for PayBox builders, creators, and payment moments.",
+    description: "The social layer for PayMoment builders, creators, and payment moments.",
     start_url: "/",
     scope: "/",
     display: "standalone",

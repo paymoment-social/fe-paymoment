@@ -55,7 +55,7 @@ export function ArticleEditorPage({ postId }: { postId?: string }) {
 function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack: () => void; onSaved: (id: string) => void }) {
   const queryClient = useQueryClient();
   const article = post?.article;
-  const [eyebrow, setEyebrow] = useState(article?.eyebrow ?? "PayBox for AI Agents");
+  const [eyebrow, setEyebrow] = useState(article?.eyebrow ?? "PayMoment for AI Agents");
   const [title, setTitle] = useState(article?.title ?? "");
   const [linkUrl, setLinkUrl] = useState("");
   const [bannerImage, setBannerImage] = useState(article?.banner?.image ?? "");
@@ -84,7 +84,7 @@ function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack:
       if (!cleanTitle || !text || !editor) throw new Error("Add a title and some article content first.");
       const description = text.length > 180 ? `${text.slice(0, 177).trimEnd()}...` : text;
       const banner = bannerFile ? await uploadFeedMedia(bannerFile, "article") : undefined;
-      const input = { eyebrow: eyebrow.trim() || "PayBox for AI Agents", title: cleanTitle, description, contentHtml: editor.getHTML(), bannerMediaId: banner?.id ?? article?.bannerMediaId, bannerColor, bannerPosition };
+    const input = { eyebrow: eyebrow.trim() || "PayMoment for AI Agents", title: cleanTitle, description, contentHtml: editor.getHTML(), bannerMediaId: banner?.id ?? article?.bannerMediaId, bannerColor, bannerPosition };
       return post ? updateArticle(post.id, { ...input, draftVersion: article?.draftVersion ?? 1 }) : createArticle({ ...input, publish: true });
     },
     onSuccess: (saved) => {
@@ -135,7 +135,7 @@ function ArticleEditorForm({ post, onBack, onSaved }: { post?: FeedPost; onBack:
 
         <form onSubmit={submit} className="overflow-hidden rounded-2xl border bg-card/45">
           <div className="space-y-5 p-5 sm:p-8">
-            <div className="space-y-1.5"><label htmlFor="article-eyebrow" className="text-sm font-semibold">Eyebrow</label><Input id="article-eyebrow" value={eyebrow} onChange={(event) => setEyebrow(event.target.value)} maxLength={80} placeholder="PayBox for AI Agents" /></div>
+            <div className="space-y-1.5"><label htmlFor="article-eyebrow" className="text-sm font-semibold">Eyebrow</label><Input id="article-eyebrow" value={eyebrow} onChange={(event) => setEyebrow(event.target.value)} maxLength={80} placeholder="PayMoment for AI Agents" /></div>
             <div className="space-y-1.5"><label htmlFor="article-title" className="text-sm font-semibold">Title</label><Input id="article-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="Give your agent a wallet it can actually use." className="h-14 text-xl font-medium" autoFocus /></div>
             <div className="space-y-3"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Article banner</p><p className="text-xs text-muted-foreground">Add a cover image and choose its visual position.</p></div><input ref={bannerInput} type="file" accept="image/*" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; readImage(file, setBannerImage); setBannerFile(file); }} /><Button type="button" variant="outline" className="h-10 rounded-full" onClick={() => bannerInput.current?.click()}><Icon icon="solar:gallery-add-linear" className="size-4" aria-hidden="true" /> {bannerImage ? "Change image" : "Add image"}</Button></div><div className="relative h-36 overflow-hidden rounded-xl border" style={{ backgroundColor: bannerColor, backgroundImage: bannerImage ? `url(${bannerImage})` : undefined, backgroundPosition: bannerPosition, backgroundSize: "cover" }}><div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" /><span className="absolute bottom-3 left-3 text-xs font-medium text-white">Banner preview</span></div><div className="flex flex-wrap items-center gap-3"><label className="flex items-center gap-2 text-xs text-muted-foreground">Banner color <input type="color" value={bannerColor} onChange={(event) => setBannerColor(event.target.value)} className="size-8 cursor-pointer rounded-md border-0 bg-transparent p-0" /></label><label className="flex items-center gap-2 text-xs text-muted-foreground">Position <select value={bannerPosition} onChange={(event) => setBannerPosition(event.target.value as typeof bannerPosition)} className="h-9 rounded-lg border bg-background px-2 text-xs text-foreground"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label></div></div>
             <div className="overflow-x-auto rounded-xl border bg-background/70 [&_.tableWrapper]:my-5 [&_.tableWrapper]:overflow-x-auto [&_table]:!border [&_table]:!border-white/35 [&_th]:!border [&_th]:!border-white/35 [&_th]:!bg-primary/10 [&_td]:!border [&_td]:!border-white/35">
@@ -191,6 +191,6 @@ function ToolbarButton({ label, active, onClick, children }: { label: string; ac
   return <button type="button" aria-label={label} aria-pressed={active} onClick={onClick} className={`min-h-9 rounded-md px-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${active ? "bg-primary/20 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>{children}</button>;
 }
 
-function AccessMessage({ title = "Article studio is for verified users", description = "Verify your PayBox account to publish and edit articles.", onBack }: { title?: string; description?: string; onBack: () => void }) {
+function AccessMessage({ title = "Article studio is for verified users", description = "Verify your PayMoment account to publish and edit articles.", onBack }: { title?: string; description?: string; onBack: () => void }) {
   return <section className="mx-auto mt-12 max-w-lg rounded-2xl border bg-card/50 p-8 text-center"><Icon icon="solar:lock-keyhole-linear" className="mx-auto size-10 text-primary" aria-hidden="true" /><h1 className="mt-4 text-xl font-semibold">{title}</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p><Button type="button" variant="outline" className="mt-5 h-10 rounded-full px-5" onClick={onBack}>Go back</Button></section>;
 }

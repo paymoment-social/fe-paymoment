@@ -173,13 +173,13 @@ export function Composer({ compact = false }: { compact?: boolean }) {
         <form.Field name="body">
           {(field) => (
             <div className="relative min-w-0 flex-1">
-              <label htmlFor="moment-body" className="sr-only">What’s your PayBox moment?</label>
+              <label htmlFor="moment-body" className="sr-only">What’s your PayMoment moment?</label>
               <textarea
                 id="moment-body"
                 value={field.state.value}
                 onBlur={field.handleBlur}
                 onChange={(event) => field.handleChange(event.target.value)}
-                placeholder="What’s your PayBox moment?"
+                placeholder="What’s your PayMoment moment?"
                 maxLength={500}
                 rows={compact ? 2 : 5}
                 className="min-h-16 w-full resize-none bg-transparent py-2 text-base leading-6 text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-0"

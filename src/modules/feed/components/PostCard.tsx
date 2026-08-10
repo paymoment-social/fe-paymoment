@@ -153,7 +153,7 @@ function PostContent({ post, variant }: { post: FeedPost; variant: "feed" | "det
       {post.poll && <PollPreview post={post} />}
       {post.card && (
         <div className="mt-4 overflow-hidden rounded-xl border bg-gradient-to-br from-card via-card to-primary/10 p-5 sm:p-6">
-          <div className="flex items-center gap-2 text-xs font-semibold"><Icon icon="solar:box-bold" className="size-4" aria-hidden="true" /> PayBox</div>
+          <div className="flex items-center gap-2 text-xs font-semibold"><Icon icon="solar:box-bold" className="size-4" aria-hidden="true" /> PayMoment</div>
           <p className="mt-8 text-xs text-primary">{post.card.eyebrow}</p>
           <h3 className="mt-1 max-w-md text-xl font-medium leading-tight sm:text-2xl">{post.card.title}</h3>
           <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">{post.card.description}</p>
@@ -168,7 +168,7 @@ function ArticlePreview({ article, expanded }: { article: NonNullable<FeedPost["
     <section className="mt-4 overflow-hidden rounded-2xl border bg-gradient-to-br from-card via-card to-primary/10">
       {article.banner?.image && <div className="h-32 border-b border-border/60 bg-cover bg-no-repeat sm:h-44" style={{ backgroundColor: article.banner.color, backgroundImage: `url(${article.banner.image})`, backgroundPosition: article.banner.position }} aria-label="Article banner" />}
       <div className="p-5 sm:p-6">
-        <div className="flex items-center gap-2 text-xs font-semibold"><Icon icon="solar:box-bold" className="size-4 text-primary" aria-hidden="true" /> PayBox</div>
+        <div className="flex items-center gap-2 text-xs font-semibold"><Icon icon="solar:box-bold" className="size-4 text-primary" aria-hidden="true" /> PayMoment</div>
         <p className="mt-8 text-sm text-primary">{article.eyebrow}</p>
         <h3 className="mt-1 max-w-xl text-2xl font-medium leading-tight sm:text-3xl">{article.title}</h3>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{article.description}</p>
