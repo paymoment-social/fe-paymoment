@@ -105,7 +105,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
 
       <footer className="mt-3 flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-1 sm:gap-2">
-          <ActionButton icon={liked ? "solar:heart-bold" : "solar:heart-linear"} label={liked ? "Unlike" : "Like"} count={post.likes} active={liked} onClick={() => likeMutation.mutate({ postId: post.id, enabled: !liked }, { onError: (error) => toast.error(error.message) })} />
+          <ActionButton icon={liked ? "solar:heart-bold" : "solar:heart-linear"} label={liked ? "Unlike" : "Like"} count={post.likes} active={liked} pending={likeMutation.isPending} onClick={() => likeMutation.mutate({ postId: post.id, enabled: !liked }, { onError: (error) => toast.error(error.message) })} />
           <ActionButton icon="solar:chat-round-linear" label="View replies" count={post.replies} onClick={() => router.push(`/post/${post.id}#reply-composer`)} />
           <RepostMenu post={post} onQuote={() => setQuoteOpen(true)} />
           <ActionButton icon="solar:plain-linear" label="Share" onClick={() => void shareMoment()} />
@@ -206,9 +206,9 @@ function PollPreview({ post }: { post: FeedPost }) {
   );
 }
 
-function ActionButton({ icon, label, count, active, onClick }: { icon: string; label: string; count?: number; active?: boolean; onClick: () => void }) {
+function ActionButton({ icon, label, count, active, pending = false, onClick }: { icon: string; label: string; count?: number; active?: boolean; pending?: boolean; onClick: () => void }) {
   return (
-    <Button variant="ghost" className={cn("h-10 min-w-10 gap-1.5 rounded-none border-0 bg-transparent px-2 text-muted-foreground hover:bg-transparent hover:text-foreground", active && "text-rose-400 hover:text-rose-300")} aria-label={label} onClick={onClick}>
+    <Button variant="ghost" className={cn("h-10 min-w-10 gap-1.5 rounded-none border-0 bg-transparent px-2 text-muted-foreground hover:bg-transparent hover:text-foreground", active && "text-rose-400 hover:text-rose-300")} aria-label={label} aria-busy={pending} disabled={pending} onClick={onClick}>
       <Icon icon={icon} className="size-5" aria-hidden="true" />
       {count !== undefined && <span className="hidden text-xs tabular-nums sm:inline">{formatEngagement(count)}</span>}
     </Button>

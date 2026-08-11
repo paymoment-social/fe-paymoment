@@ -1,7 +1,7 @@
 "use client";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { DISCOVER_QUERY_KEY } from "../constants";
+import { DISCOVER_QUERY_KEY, TRENDING_TOPICS_QUERY_KEY } from "../constants";
 import { useDiscoverContext } from "../context/DiscoverContext";
 import { getDiscoverData, getDiscoverSuggestions, getTrendingTopics } from "../services/discover.service";
 
@@ -16,5 +16,5 @@ export function useDiscoverSuggestions(query: string) {
 }
 
 export function useTrendingTopics() {
-  return useQuery({ queryKey: [...DISCOVER_QUERY_KEY, "trending"], queryFn: getTrendingTopics, staleTime: 60_000 });
+  return useQuery({ queryKey: TRENDING_TOPICS_QUERY_KEY, queryFn: getTrendingTopics, staleTime: 30_000, refetchInterval: 30_000, refetchOnWindowFocus: "always", refetchOnReconnect: true });
 }

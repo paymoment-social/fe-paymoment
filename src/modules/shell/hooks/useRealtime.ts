@@ -7,6 +7,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Icon } from "@iconify/react";
 import { API_URL } from "@/lib/api/client";
+import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
+import { DISCOVER_QUERY_KEY, TRENDING_TOPICS_QUERY_KEY } from "@/modules/discover/constants";
+import type { DiscoverPage } from "@/modules/discover/types";
+import { incrementTrendingTopics } from "@/modules/discover/utils/trendingTopics";
 import { AuthorAvatar } from "@/modules/feed";
 import { getNotifications } from "@/modules/notifications/services/notifications.service";
 import { NOTIFICATIONS_QUERY_KEY } from "@/modules/notifications/constants";
@@ -44,15 +48,18 @@ function showRealtimeNotification(item: Awaited<ReturnType<typeof getNotificatio
 
 export function useRealtime() {
   const queryClient = useQueryClient();
+  const currentUser = useCurrentUser();
   const shownNotificationIds = useRef(new Set<string>());
   useEffect(() => {
     let socket: WebSocket | undefined;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let fallbackPoll: ReturnType<typeof setInterval> | undefined;
+    let postRefresh: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
     let closed = false;
     const refreshRealtimeData = () => {
-      void queryClient.invalidateQueries({ queryKey: ["paymoment", "feed"] });
+      void queryClient.invalidateQueries({ queryKey: ["paymoment", "feed-updates"] });
+      void queryClient.invalidateQueries({ queryKey: DISCOVER_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: ["paymoment", "messages"] });
       void queryClient.invalidateQueries({ queryKey: ["paymoment", "notifications"] });
     };
@@ -65,13 +72,29 @@ export function useRealtime() {
       clearInterval(fallbackPoll);
       fallbackPoll = undefined;
     };
+    const schedulePostRefresh = () => {
+      if (postRefresh) return;
+      postRefresh = setTimeout(() => {
+        postRefresh = undefined;
+        void queryClient.invalidateQueries({ queryKey: ["paymoment", "feed-updates"] });
+        void queryClient.invalidateQueries({ queryKey: DISCOVER_QUERY_KEY });
+      }, 400);
+    };
     const connect = () => {
       const url = `${API_URL.replace(/^http/, "ws")}/api/ws`;
       socket = new WebSocket(url);
       socket.onopen = () => { attempts = 0; stopFallbackPoll(); setRealtimeConnection(socket!); };
       socket.onmessage = (event) => {
         try {
-          const payload = JSON.parse(String(event.data)) as { type?: string; data?: { conversation_id?: string; notification_id?: string } };
+          const payload = JSON.parse(String(event.data)) as { type?: string; data?: { author_id?: string; conversation_id?: string; hashtags?: unknown; notification_id?: string; post_id?: string } };
+          if (payload.type === "post.created") {
+            if (payload.data?.author_id !== currentUser.id) {
+              queryClient.setQueriesData<number>({ queryKey: ["paymoment", "feed-updates"] }, (current) => typeof current === "number" ? current + 1 : current);
+              const hashtags = Array.isArray(payload.data?.hashtags) ? payload.data.hashtags.filter((value): value is string => typeof value === "string") : [];
+              queryClient.setQueryData<DiscoverPage["topics"]>(TRENDING_TOPICS_QUERY_KEY, (current) => current ? incrementTrendingTopics(current, hashtags, 5) : current);
+            }
+            schedulePostRefresh();
+          }
           if (payload.type?.startsWith("message.") || payload.type === "conversation.updated") { queryClient.invalidateQueries({ queryKey: ["paymoment", "messages"] }); if (payload.data?.conversation_id) queryClient.invalidateQueries({ queryKey: ["paymoment", "messages", payload.data.conversation_id] }); }
           if (payload.type === "notification.created") {
             const notificationId = typeof payload.data?.notification_id === "string" ? payload.data.notification_id : undefined;
@@ -99,6 +122,6 @@ export function useRealtime() {
       };
     };
     connect();
-    return () => { closed = true; if (retry) clearTimeout(retry); stopFallbackPoll(); setRealtimeConnection(null); socket?.close(); };
-  }, [queryClient]);
+    return () => { closed = true; if (retry) clearTimeout(retry); if (postRefresh) clearTimeout(postRefresh); stopFallbackPoll(); setRealtimeConnection(null); socket?.close(); };
+  }, [currentUser.id, queryClient]);
 }

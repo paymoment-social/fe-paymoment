@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowLeft, ArrowUpRight, Check, Clipboard, ExternalLink, Sparkles } from "lucide-react";
@@ -98,21 +99,29 @@ function McpInstructions({ provider }: { provider: "chatgpt" | "claude" }) {
     window.setTimeout(() => setCopied(false), 1800);
   };
 
-  return <DialogContent className="max-h-[90dvh] max-w-4xl gap-0 overflow-y-auto border-border bg-card p-0">
-    <DialogHeader className="border-b border-border px-6 py-5 pr-12">
-      <DialogTitle className="text-lg font-semibold">Connect {isChatGpt ? "ChatGPT" : "Claude"}</DialogTitle>
-      <DialogDescription className="mt-1">Follow these steps to authorize your PayMoment agent.</DialogDescription>
+  return <DialogContent className="max-h-[92dvh] w-[calc(100vw-2rem)] max-w-5xl gap-0 overflow-y-auto border-border bg-card p-0 sm:max-w-5xl [&_[data-slot=dialog-close]]:right-3 [&_[data-slot=dialog-close]]:top-3 [&_[data-slot=dialog-close]]:size-10">
+    <DialogHeader className="border-b border-border px-5 py-4 pr-14 sm:px-6 sm:py-5">
+      <div className="flex items-center gap-2.5">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-border bg-secondary">
+          <Icon icon={isChatGpt ? "simple-icons:openai" : "thesvg-color:claude"} className="size-4.5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">PayMoment · Agent setup</p>
+          <DialogTitle className="mt-1 text-lg font-semibold">Connect {isChatGpt ? "ChatGPT" : "Claude"}</DialogTitle>
+        </div>
+      </div>
+      <DialogDescription className="mt-1 max-w-2xl">Follow these steps to securely authorize PayMoment in your AI account.</DialogDescription>
     </DialogHeader>
-    <div className="grid gap-6 px-6 py-6 md:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)] md:items-stretch">
-      <ol className="space-y-5 text-sm">
+    <div className="grid gap-5 px-5 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.92fr)] lg:items-stretch lg:gap-7">
+      <ol className="space-y-4 text-sm">
         <InstructionStep number="1" title="Copy the URL below"><div className="mt-2 flex items-center gap-2 rounded-xl border border-border bg-background p-2"><code className="min-w-0 flex-1 truncate px-2 text-xs text-muted-foreground">{MCP_URL}</code><Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => void copyUrl()}>{copied ? <Check className="size-3.5" aria-hidden="true" /> : <Clipboard className="size-3.5" aria-hidden="true" />} {copied ? "Copied" : "Copy"}</Button></div></InstructionStep>
         <InstructionStep number="2" title={`Open ${isChatGpt ? "ChatGPT" : "Claude"} on the web`}><p className="mt-1 text-muted-foreground">Open the web app in your browser and sign in to the account where you want to use PayMoment.</p><a href={isChatGpt ? "https://chatgpt.com/" : "https://claude.ai/"} target="_blank" rel="noreferrer" className="mt-2 inline-flex min-h-10 items-center gap-2 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Open {isChatGpt ? "ChatGPT" : "Claude"} <ExternalLink className="size-3.5" aria-hidden="true" /></a></InstructionStep>
         <InstructionStep number="3" title="Add a custom connector"><p className="mt-1 text-muted-foreground">Open the connector, plugin, or integrations settings, paste the copied URL, and choose OAuth when asked.</p></InstructionStep>
         <InstructionStep number="4" title="Save and authorize"><p className="mt-1 text-muted-foreground">Save the connector, connect it, and complete the PayMoment authorization screen.</p></InstructionStep>
       </ol>
-      <div className="min-h-48 overflow-hidden rounded-xl border border-border bg-background p-2">{SETUP_VIDEO_URL ? <iframe title={`${isChatGpt ? "ChatGPT" : "Claude"} PayMoment setup video`} src={SETUP_VIDEO_URL} className="h-full min-h-48 w-full rounded-lg" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <div className="flex h-full min-h-48 items-center justify-center rounded-lg bg-secondary/60 px-5 text-center text-xs text-muted-foreground">Setup video will appear here<br /><span className="mt-1 block text-[10px]">Set NEXT_PUBLIC_AGENT_SETUP_VIDEO_URL when ready</span></div>}</div>
+      <div className="min-h-56 overflow-hidden rounded-xl border border-border bg-background p-2 lg:min-h-full">{SETUP_VIDEO_URL ? <iframe title={`${isChatGpt ? "ChatGPT" : "Claude"} PayMoment setup video`} src={SETUP_VIDEO_URL} className="h-full min-h-56 w-full rounded-lg lg:min-h-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <div className="flex h-full min-h-56 flex-col items-center justify-center rounded-lg bg-gradient-to-br from-secondary via-secondary/70 to-primary/10 px-6 py-8 text-center lg:min-h-full"><Image src="/paymoment.png" alt="PayMoment" width={876} height={179} priority className="h-auto w-full max-w-sm object-contain" /><p className="mt-6 max-w-xs text-sm font-medium text-foreground">Connect PayMoment to your AI workspace</p><p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">Copy the MCP URL, add it as a connector, then approve access with your PayMoment account.</p></div>}</div>
     </div>
-    <DialogFooter className="border-border bg-background/40"><DialogClose render={<Button type="button" variant="outline" />}>Done</DialogClose></DialogFooter>
+    <DialogFooter className="m-0 rounded-b-xl border-border bg-background/40"><DialogClose render={<Button type="button" variant="outline" className="min-h-10" />}>Done</DialogClose></DialogFooter>
   </DialogContent>;
 }
 
