@@ -1,6 +1,6 @@
 import { apiRequest, mutationHeaders } from "@/lib/api/client";
 import { mapAuthor } from "@/modules/feed/services/feed.service";
-import type { NotificationFilter, NotificationPreferences, PayNotification } from "../types";
+import type { NotificationFilter, NotificationPage, NotificationPreferences, PayNotification } from "../types";
 
 type ApiActor = Parameters<typeof mapAuthor>[0];
 type ApiNotification = { id: string; type: PayNotification["type"] | "repost" | "message" | "system"; actor: ApiActor | null; post_id: string | null; reply_id: string | null; conversation_id: string | null; message_id: string | null; payload: Record<string, unknown>; read_at: string | null; created_at: string };
@@ -37,7 +37,12 @@ function mapNotification(item: ApiNotification): PayNotification {
   };
 }
 
-export async function getNotifications(filter: NotificationFilter) { const response = await apiRequest<{ data: ApiNotification[] }>(`/api/v1/notifications?filter=${filter}&limit=50`); return (response.data ?? []).map(mapNotification); }
+export async function getNotifications(filter: NotificationFilter, cursor?: string, limit = 30): Promise<NotificationPage> {
+  const query = new URLSearchParams({ filter, limit: String(limit) });
+  if (cursor) query.set("cursor", cursor);
+  const response = await apiRequest<{ data: ApiNotification[]; meta: { next_cursor: string | null } }>(`/api/v1/notifications?${query}`);
+  return { notifications: (response.data ?? []).map(mapNotification), nextCursor: response.meta.next_cursor };
+}
 export async function markNotificationRead(id: string) { await apiRequest(`/api/v1/notifications/${id}/read`, { method: "PUT", headers: mutationHeaders() }); }
 export async function markAllNotificationsRead() { await apiRequest(`/api/v1/notifications/read-all`, { method: "PUT", headers: mutationHeaders() }); }
 export async function getUnreadNotificationCount() { const response = await apiRequest<{ data: { count: number } }>("/api/v1/notifications/unread-count"); return response.data.count; }

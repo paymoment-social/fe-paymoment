@@ -8,17 +8,20 @@ import { ShellProvider } from "../context/ShellContext";
 import { MobileNavigation } from "./MobileNavigation";
 import { RightRail } from "./RightRail";
 import { Sidebar } from "./Sidebar";
+import { useRealtime } from "../hooks/useRealtime";
+import type { ShellSection } from "../types";
 
-export function MomentShell({ children }: { children: ReactNode }) {
+export function MomentShell({ children, active = "for-you" }: { children: ReactNode; active?: ShellSection }) {
+  useRealtime();
   return (
     <AuthGate><ShellProvider>
       <ComposerProvider>
         <div className="mx-auto grid min-h-screen w-full max-w-[105rem] grid-cols-1 justify-center gap-5 px-4 pb-24 sm:px-6 lg:grid-cols-[18rem_minmax(0,48rem)] lg:gap-8 lg:pb-0 xl:grid-cols-[16rem_minmax(0,48rem)_20rem] xl:gap-5 min-[1600px]:grid-cols-[20.5rem_minmax(0,48rem)_25.5rem] min-[1600px]:gap-8">
-          <Sidebar active="for-you" />
+          <Sidebar active={active} />
           <div className="min-w-0">{children}</div>
           <RightRail />
         </div>
-        <MobileNavigation active="for-you" />
+        <MobileNavigation active={active} />
         <Composer />
         <VerifiedUnlockDialog />
       </ComposerProvider>

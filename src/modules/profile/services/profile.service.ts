@@ -1,5 +1,6 @@
 import { apiRequest, mutationHeaders } from "@/lib/api/client";
-import type { ApiUserProfile, ProfileData } from "../types";
+import { mapApiPost } from "@/modules/feed/services/feed.service";
+import type { ApiUserProfile, ProfileData, ProfilePostsPage } from "../types";
 
 type ProfileResponse = { data: { user: ApiUserProfile }; meta: { request_id: string } };
 
@@ -37,6 +38,13 @@ export async function getProfile(): Promise<ProfileData> {
 export async function getPublicProfile(username: string): Promise<ProfileData> {
   const response = await apiRequest<ProfileResponse>(`/api/v1/users/${encodeURIComponent(username)}`);
   return mapProfile(response.data.user);
+}
+
+export async function getPublicProfilePosts(username: string, cursor?: string): Promise<ProfilePostsPage> {
+  const query = new URLSearchParams({ limit: "20" });
+  if (cursor) query.set("cursor", cursor);
+  const response = await apiRequest<{ data: Parameters<typeof mapApiPost>[0][]; meta: { next_cursor: string | null } }>(`/api/v1/users/${encodeURIComponent(username)}/posts?${query}`);
+  return { posts: (response.data ?? []).map(mapApiPost), nextCursor: response.meta.next_cursor };
 }
 
 export async function updateProfile(profile: ProfileData): Promise<ProfileData> {

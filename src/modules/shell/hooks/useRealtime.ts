@@ -25,7 +25,7 @@ const notificationAccent: Record<PayNotification["type"], { badge: string; surfa
   system: { badge: "bg-primary text-primary-foreground", surface: "bg-primary/15 text-primary" },
 };
 
-function showRealtimeNotification(item: Awaited<ReturnType<typeof getNotifications>>[number]) {
+function showRealtimeNotification(item: Awaited<ReturnType<typeof getNotifications>>["notifications"][number]) {
   const accent = notificationAccent[item.type];
   const typeIcon = notificationIcon[item.type];
   toast.custom((toastId) => createElement("button", {
@@ -77,10 +77,11 @@ export function useRealtime() {
             const notificationId = typeof payload.data?.notification_id === "string" ? payload.data.notification_id : undefined;
             void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
             void queryClient.invalidateQueries({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "unread-count"] });
+            void queryClient.invalidateQueries({ queryKey: ["paymoment", "messages"] });
             if (notificationId && !shownNotificationIds.current.has(notificationId)) {
               shownNotificationIds.current.add(notificationId);
-              void queryClient.fetchQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "all"], queryFn: () => getNotifications("all"), staleTime: 0 }).then((items) => {
-                const item = items.find((notification) => notification.id === notificationId);
+              void getNotifications("all", undefined, 30).then((page) => {
+                const item = page.notifications.find((notification) => notification.id === notificationId);
                 if (item) showRealtimeNotification(item);
               }).catch(() => { /* The notification list will retry on focus. */ });
             }

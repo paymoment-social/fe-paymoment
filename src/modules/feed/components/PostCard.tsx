@@ -144,8 +144,14 @@ function PostContent({ post, variant }: { post: FeedPost; variant: "feed" | "det
     <>
       {!post.article && (
         <div className="mt-3 whitespace-pre-line text-base leading-6 text-foreground">
-          {tokenizePostBody(post.body).map((token, index) => token.kind === "text" ? <span key={`${token.value}-${index}`}>{token.value}</span> : <span key={`${token.value}-${index}`} className={cn("font-medium underline decoration-primary/40 underline-offset-2", token.kind === "mention" ? "text-primary" : "text-violet-300")}>{token.value}</span>)}
-          {post.tag && <p className="mt-3 text-primary">{post.tag}</p>}
+          {tokenizePostBody(post.body).map((token, index) => {
+            if (token.kind === "text") return <span key={`${token.value}-${index}`}>{token.value}</span>;
+            const href = token.kind === "mention"
+              ? `/u/${encodeURIComponent(token.value.slice(1))}`
+              : `/discover?q=${encodeURIComponent(token.value)}`;
+            return <Link key={`${token.value}-${index}`} href={href} className={cn("rounded-sm font-medium underline decoration-primary/40 underline-offset-2 transition-colors hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", token.kind === "mention" ? "text-primary" : "text-violet-300")} aria-label={token.kind === "mention" ? `Open profile ${token.value}` : `Discover moments tagged ${token.value}`}>{token.value}</Link>;
+          })}
+          {post.tag && <p className="mt-3"><Link href={`/discover?q=${encodeURIComponent(post.tag)}`} className="rounded-sm text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{post.tag}</Link></p>}
         </div>
       )}
       {post.media && <PostMedia media={post.media} />}

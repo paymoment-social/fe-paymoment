@@ -2,6 +2,11 @@
 
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
+import { DISCOVER_QUERY_KEY } from "@/modules/discover/constants";
+import type { DiscoverPage } from "@/modules/discover/types";
+import { NOTIFICATIONS_QUERY_KEY } from "@/modules/notifications/constants";
+import type { NotificationPage } from "@/modules/notifications/types";
+import type { ProfileData } from "@/modules/profile/types";
 import { FEED_QUERY_KEY } from "../constants";
 import { createPost, createReply, deletePost, setPostReaction, setReplyLike, setUserFollow, votePoll } from "../services/feed.service";
 import type { FeedPost, FeedReply } from "../types";
@@ -12,6 +17,16 @@ type FeedPage = { posts: FeedPost[]; nextCursor: string | null };
 
 function isFeedInfiniteData(value: unknown): value is InfiniteData<FeedPage> {
   return Boolean(value && typeof value === "object" && "pages" in value && Array.isArray((value as { pages?: unknown }).pages));
+}
+
+function isDiscoverInfiniteData(value: unknown): value is InfiniteData<DiscoverPage> {
+  return Boolean(value && typeof value === "object" && "pages" in value && Array.isArray((value as { pages?: unknown }).pages)
+    && (value as { pages: unknown[] }).pages.every((page) => Boolean(page && typeof page === "object" && "people" in page && "moments" in page && "articles" in page)));
+}
+
+function isNotificationInfiniteData(value: unknown): value is InfiniteData<NotificationPage> {
+  return Boolean(value && typeof value === "object" && "pages" in value && Array.isArray((value as { pages?: unknown }).pages)
+    && (value as { pages: unknown[] }).pages.every((page) => Boolean(page && typeof page === "object" && "notifications" in page)));
 }
 
 function updatePostCaches(queryClient: ReturnType<typeof useQueryClient>, postId: string, update: (post: FeedPost) => FeedPost) {
@@ -28,6 +43,31 @@ function updateAuthorCaches(queryClient: ReturnType<typeof useQueryClient>, user
     return { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.map((post) => post.author.id === userId ? update(post) : post) })) };
   });
   queryClient.setQueriesData<FeedPost>({ queryKey: ["paymoment", "post"] }, (current) => current?.author.id === userId ? update(current) : current);
+}
+
+type FollowRelationship = NonNullable<FeedPost["author"]["relationship"]>;
+
+function updateFollowCaches(queryClient: ReturnType<typeof useQueryClient>, userId: string, relationship: FollowRelationship) {
+  updateAuthorCaches(queryClient, userId, (post) => ({ ...post, author: { ...post.author, relationship } }));
+  queryClient.setQueriesData<InfiniteData<DiscoverPage>>({ queryKey: DISCOVER_QUERY_KEY }, (current) => isDiscoverInfiniteData(current) ? {
+    ...current,
+    pages: current.pages.map((page) => ({
+      ...page,
+      people: page.people.map((person) => person.id === userId ? { ...person, relationship } : person),
+      moments: page.moments.map((post) => post.author.id === userId ? { ...post, author: { ...post.author, relationship } } : post),
+      articles: page.articles.map((post) => post.author.id === userId ? { ...post, author: { ...post.author, relationship } } : post),
+    })),
+  } : current);
+  queryClient.setQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY }, (current) => isNotificationInfiniteData(current) ? {
+    ...current,
+    pages: current.pages.map((page) => ({ ...page, notifications: page.notifications.map((item) => item.user?.id === userId ? { ...item, user: { ...item.user, relationship } } : item) })),
+  } : current);
+  queryClient.setQueriesData<ProfileData>({ queryKey: ["paymoment", "profile", "public"] }, (current) => {
+    if (!current || current.id !== userId) return current;
+    const wasFollowing = current.relationship === "following";
+    const isFollowing = relationship === "following";
+    return { ...current, relationship, followers: Math.max(0, current.followers + (wasFollowing === isFollowing ? 0 : isFollowing ? 1 : -1)) };
+  });
 }
 
 export function useCreateMoment() {
@@ -154,18 +194,22 @@ export function useUserFollow() {
   return useMutation({
     mutationFn: ({ userId, enabled }: { userId: string; enabled: boolean }) => setUserFollow(userId, enabled),
     onMutate: async ({ userId, enabled }) => {
-      await queryClient.cancelQueries({ queryKey: FEED_QUERY_KEY });
-      const feedSnapshots = queryClient.getQueriesData<InfiniteData<FeedPage>>({ queryKey: FEED_QUERY_KEY });
-      const postSnapshots = queryClient.getQueriesData<FeedPost>({ queryKey: ["paymoment", "post"] });
-      updateAuthorCaches(queryClient, userId, (post) => ({ ...post, author: { ...post.author, relationship: enabled ? "following" : "none" } }));
-      return { feedSnapshots, postSnapshots };
+      const keys = [FEED_QUERY_KEY, ["paymoment", "post"], DISCOVER_QUERY_KEY, NOTIFICATIONS_QUERY_KEY, ["paymoment", "profile", "public"]] as const;
+      await Promise.all(keys.map((queryKey) => queryClient.cancelQueries({ queryKey })));
+      const snapshots = keys.flatMap((queryKey) => queryClient.getQueriesData({ queryKey }));
+      updateFollowCaches(queryClient, userId, enabled ? "following" : "none");
+      return { snapshots };
     },
     onError: (_error, _variables, context) => {
-      context?.feedSnapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
-      context?.postSnapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
+      context?.snapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
     },
-    onSuccess: (result) => updateAuthorCaches(queryClient, result.user_id, (post) => ({ ...post, author: { ...post.author, relationship: result.status === "active" ? "following" : result.status === "pending" ? "pending" : "none" } })),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY }),
+    onSuccess: (result) => updateFollowCaches(queryClient, result.user_id, result.status === "active" ? "following" : result.status === "pending" ? "pending" : "none"),
+    onSettled: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: DISCOVER_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY }),
+      queryClient.invalidateQueries({ queryKey: ["paymoment", "profile", "public"] }),
+    ]),
   });
 }
 

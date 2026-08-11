@@ -1,19 +1,24 @@
 "use client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { NOTIFICATIONS_QUERY_KEY } from "../constants";
 import { useNotificationsContext } from "../context/NotificationsContext";
 import { getNotificationPreferences, getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, updateNotificationPreferences } from "../services/notifications.service";
-import type { NotificationPreferences, PayNotification } from "../types";
+import type { NotificationPage, NotificationPreferences } from "../types";
 
-export function useNotifications() { const { filter } = useNotificationsContext(); return useQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, filter], queryFn: () => getNotifications(filter), staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true }); }
+function isNotificationInfiniteData(value: unknown): value is InfiniteData<NotificationPage> {
+  return Boolean(value && typeof value === "object" && "pages" in value && Array.isArray((value as { pages?: unknown }).pages)
+    && (value as { pages: unknown[] }).pages.every((page) => Boolean(page && typeof page === "object" && "notifications" in page)));
+}
+
+export function useNotifications() { const { filter } = useNotificationsContext(); return useInfiniteQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, filter], queryFn: ({ pageParam }) => getNotifications(filter, pageParam, 30), initialPageParam: undefined as string | undefined, getNextPageParam: (page) => page.nextCursor ?? undefined, staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true }); }
 export function useNotificationRead() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: markNotificationRead,
     onMutate: async (id) => {
       await client.cancelQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
-      const snapshots = client.getQueriesData<PayNotification[]>({ queryKey: NOTIFICATIONS_QUERY_KEY });
-      client.setQueriesData<PayNotification[]>({ queryKey: NOTIFICATIONS_QUERY_KEY }, (current) => current?.map((item) => item.id === id ? { ...item, read: true } : item));
+      const snapshots = client.getQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      client.setQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY }, (current) => isNotificationInfiniteData(current) ? { ...current, pages: current.pages.map((page) => ({ ...page, notifications: page.notifications.map((item) => item.id === id ? { ...item, read: true } : item) })) } : current);
       return { snapshots };
     },
     onError: (_error, _id, context) => context?.snapshots.forEach(([key, value]) => client.setQueryData(key, value)),
@@ -26,8 +31,8 @@ export function useNotificationsReadAll() {
     mutationFn: markAllNotificationsRead,
     onMutate: async () => {
       await client.cancelQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
-      const snapshots = client.getQueriesData<PayNotification[]>({ queryKey: NOTIFICATIONS_QUERY_KEY });
-      client.setQueriesData<PayNotification[]>({ queryKey: NOTIFICATIONS_QUERY_KEY }, (current) => current?.map((item) => ({ ...item, read: true })));
+      const snapshots = client.getQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      client.setQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY }, (current) => isNotificationInfiniteData(current) ? { ...current, pages: current.pages.map((page) => ({ ...page, notifications: page.notifications.map((item) => ({ ...item, read: true })) })) } : current);
       return { snapshots };
     },
     onError: (_error, _variables, context) => context?.snapshots.forEach(([key, value]) => client.setQueryData(key, value)),

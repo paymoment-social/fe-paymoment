@@ -6,11 +6,11 @@ import { createConversation, createMessageRequest, getConversationMessages, getC
 import type { ChatMessage } from "../types";
 
 export function useMessages() { return useQuery({ queryKey: MESSAGES_QUERY_KEY, queryFn: getConversations }); }
-export function useIncomingMessageRequests() { return useQuery({ queryKey: [...MESSAGES_QUERY_KEY, "requests"], queryFn: getIncomingMessageRequests }); }
+export function useIncomingMessageRequests() { return useQuery({ queryKey: [...MESSAGES_QUERY_KEY, "requests"], queryFn: getIncomingMessageRequests, staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true }); }
 export function useRespondToMessageRequest() { const queryClient = useQueryClient(); return useMutation({ mutationFn: ({ id, decision }: { id: string; decision: "accept" | "decline" }) => respondToMessageRequest(id, decision), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: [...MESSAGES_QUERY_KEY, "requests"] }); void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }); } }); }
 export function useConversationMessages(conversationId: string) { return useInfiniteQuery({ queryKey: [...MESSAGES_QUERY_KEY, conversationId], queryFn: ({ pageParam }) => getConversationMessages(conversationId, pageParam), initialPageParam: undefined as string | undefined, getNextPageParam: (last) => last.nextCursor, enabled: Boolean(conversationId) }); }
 export function useCreateConversation() { const queryClient = useQueryClient(); return useMutation({ mutationFn: createConversation, onSuccess: () => queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }) }); }
-export function useCreateMessageRequest() { return useMutation({ mutationFn: createMessageRequest }); }
+export function useCreateMessageRequest() { const queryClient = useQueryClient(); return useMutation({ mutationFn: createMessageRequest, onSuccess: () => queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }) }); }
 export function useMarkConversationRead() { const queryClient = useQueryClient(); return useMutation({ mutationFn: markConversationRead, onSuccess: () => queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }) }); }
 export function useSendConversationMessage() { const queryClient = useQueryClient(); return useMutation({
   mutationFn: sendConversationMessage,

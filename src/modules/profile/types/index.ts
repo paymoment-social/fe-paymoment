@@ -1,4 +1,4 @@
-import type { FeedAuthor } from "@/modules/feed";
+import type { FeedAuthor, FeedPost } from "@/modules/feed";
 export type ProfileData = FeedAuthor & {
   joinedAt: string;
   location: string;
@@ -33,3 +33,4 @@ export type ApiUserProfile = {
   entitlement: { verified: boolean; verified_at: string | null; points_balance: number; verified_threshold: number };
   relationship?: "none" | "pending" | "following" | "blocked" | "muted";
 };
+export type ProfilePostsPage = { posts: FeedPost[]; nextCursor: string | null };

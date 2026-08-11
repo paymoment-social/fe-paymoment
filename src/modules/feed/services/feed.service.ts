@@ -14,7 +14,7 @@ type ApiProfile = {
 };
 
 type ApiMedia = { id: string; url: string | null; mime_type: string; alt_text: string | null; position?: number };
-type ApiPost = {
+export type ApiPost = {
   id: string;
   kind: "moment" | "quote" | "article" | "poll";
   body: string;
