@@ -1,4 +1,5 @@
-import { apiRequest, mutationHeaders } from "@/lib/api/client";
+import { ApiError, apiRequest, mutationHeaders } from "@/lib/api/client";
+import { getDiscoverData } from "@/modules/discover/services/discover.service";
 import { mapApiPost } from "@/modules/feed/services/feed.service";
 import type { ApiUserProfile, ProfileData, ProfilePostsPage } from "../types";
 
@@ -41,10 +42,22 @@ export async function getPublicProfile(username: string): Promise<ProfileData> {
 }
 
 export async function getPublicProfilePosts(username: string, cursor?: string): Promise<ProfilePostsPage> {
-  const query = new URLSearchParams({ limit: "20" });
-  if (cursor) query.set("cursor", cursor);
-  const response = await apiRequest<{ data: Parameters<typeof mapApiPost>[0][]; meta: { next_cursor: string | null } }>(`/api/v1/users/${encodeURIComponent(username)}/posts?${query}`);
-  return { posts: (response.data ?? []).map(mapApiPost), nextCursor: response.meta.next_cursor };
+  try {
+    const query = new URLSearchParams({ limit: "20" });
+    if (cursor) query.set("cursor", cursor);
+    const response = await apiRequest<{ data: Parameters<typeof mapApiPost>[0][]; meta: { next_cursor: string | null } }>(`/api/v1/users/${encodeURIComponent(username)}/posts?${query}`);
+    return { posts: (response.data ?? []).map(mapApiPost), nextCursor: response.meta.next_cursor };
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 404) throw error;
+    // Backward-compatible fallback while an older production API release does
+    // not yet expose the dedicated profile-posts endpoint.
+    const discovery = await getDiscoverData(username, "all", cursor);
+    const normalizedHandle = username.trim().toLowerCase();
+    const posts = [...discovery.moments, ...discovery.articles]
+      .filter((post) => post.author.handle.toLowerCase() === normalizedHandle)
+      .filter((post, index, values) => values.findIndex((candidate) => candidate.id === post.id) === index);
+    return { posts, nextCursor: discovery.nextCursor };
+  }
 }
 
 export async function updateProfile(profile: ProfileData): Promise<ProfileData> {
