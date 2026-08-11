@@ -41,7 +41,6 @@ export function useCreateMoment() {
       });
       queryClient.setQueryData(postQueryKey(post.id), post);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY }),
   });
 }
 
