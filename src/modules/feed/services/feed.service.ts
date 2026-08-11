@@ -44,7 +44,7 @@ type ApiReply = {
   created_at: string;
 };
 
-type PageResponse<T> = { data: T[]; meta: { next_cursor: string | null; has_more: boolean } };
+type PageResponse<T> = { data: T[]; meta: { next_cursor: string | null; has_more: boolean; snapshot_at?: string } };
 type DataResponse<T> = { data: T };
 
 function isApiProfile(value: unknown): value is ApiProfile {
@@ -140,11 +140,11 @@ function mapApiReply(reply: ApiReply): FeedReply {
   return { id: reply.id, postId: reply.post_id, parentId: reply.parent_id ?? undefined, author: mapAuthor(reply.author), body: reply.body, createdAt: relativeTime(reply.created_at), likes: reply.like_count, media: media[0]?.url ?? undefined, liked: Boolean(reply.viewer_liked), isOwner: Boolean(reply.is_owner) };
 }
 
-export async function getFeedPosts(cursor?: string, mode: "latest" | "top" | "for_you" = "latest", limit = 20): Promise<{ posts: FeedPost[]; nextCursor: string | null }> {
+export async function getFeedPosts(cursor?: string, mode: "latest" | "top" | "for_you" = "latest", limit = 20): Promise<{ posts: FeedPost[]; nextCursor: string | null; snapshotAt: string }> {
   const query = new URLSearchParams({ limit: String(limit), mode });
   if (cursor) query.set("cursor", cursor);
   const response = await apiRequest<PageResponse<ApiPost>>(`/api/v1/feed?${query}`);
-  return { posts: (response.data ?? []).map(mapApiPost), nextCursor: response.meta.next_cursor };
+  return { posts: (response.data ?? []).map(mapApiPost), nextCursor: response.meta.next_cursor, snapshotAt: response.meta.snapshot_at ?? new Date().toISOString() };
 }
 
 export async function getNewFeedPostCount(since: string) {

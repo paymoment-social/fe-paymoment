@@ -152,6 +152,16 @@ a {
   color: var(--foreground);
 }
 
+[data-sonner-toast].paymoment-realtime-toast {
+  width: auto !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

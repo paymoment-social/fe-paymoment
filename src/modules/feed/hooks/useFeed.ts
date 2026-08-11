@@ -26,11 +26,13 @@ export function useFeed(mode: FeedMode = "latest") {
     onSuccess: (firstPage) => {
       queryClient.setQueryData<InfiniteData<FeedPage>>(queryKey, { pages: [firstPage], pageParams: [undefined] });
       queryClient.removeQueries({ queryKey: ["paymoment", "feed-updates", mode] });
+      queryClient.setQueryData(["paymoment", "feed-updates", mode, firstPage.snapshotAt], 0);
     },
   });
   return {
     ...query,
     data: query.data?.pages.flatMap((page) => page.posts),
+    snapshotAt: query.data?.pages[0]?.snapshotAt,
     refreshFromTop: topRefresh.mutateAsync,
     isRefreshingFromTop: topRefresh.isPending,
     refreshFromTopError: topRefresh.error,

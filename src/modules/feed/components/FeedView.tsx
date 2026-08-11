@@ -12,13 +12,7 @@ import { PostCard } from "./PostCard";
 export function FeedView({ mode = "latest" }: { mode?: "latest" | "top" | "for_you" }) {
   const feed = useFeed(mode);
   const { setOpen } = useComposer();
-  const visiblePosts = feed.data ?? [];
-  const newestVisibleAt = visiblePosts.reduce<string | undefined>((newest, post) => {
-    if (!post.createdAtValue || Number.isNaN(Date.parse(post.createdAtValue))) return newest;
-    if (!newest || Date.parse(post.createdAtValue) > Date.parse(newest)) return post.createdAtValue;
-    return newest;
-  }, undefined);
-  const feedUpdates = useFeedUpdateCount(mode, newestVisibleAt);
+  const feedUpdates = useFeedUpdateCount(mode, feed.snapshotAt);
   const newPostCount = feedUpdates.data ?? 0;
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = feed;
