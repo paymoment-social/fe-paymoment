@@ -25,7 +25,11 @@ export function ProfileView() {
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-xl border bg-card/55">
-        <div className="h-32 bg-gradient-to-br from-primary/35 via-primary/10 to-transparent bg-cover bg-no-repeat" style={{ backgroundImage: data.coverUrl ? `url(${data.coverUrl})` : undefined, backgroundPosition: data.coverPosition }} />
+        <div className="group relative h-32 bg-gradient-to-br from-primary/35 via-primary/10 to-transparent bg-cover bg-no-repeat" style={{ backgroundImage: data.coverUrl ? `url(${data.coverUrl})` : undefined, backgroundPosition: data.coverPosition }}>
+          <Button type="button" variant="secondary" className="absolute right-3 top-3 h-9 rounded-full bg-background/80 px-3 text-xs opacity-100 shadow-sm backdrop-blur transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100" onClick={() => setEditing(true)}>
+            <Icon icon="solar:gallery-edit-linear" className="size-4" aria-hidden="true" /> Edit cover
+          </Button>
+        </div>
         <div className="px-5 pb-5">
           <div className="-mt-10 flex items-end justify-between gap-4">
             <AuthorAvatar author={data} className="size-24 border-4 border-card" />
