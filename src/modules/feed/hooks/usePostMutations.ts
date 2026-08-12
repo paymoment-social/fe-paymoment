@@ -201,6 +201,7 @@ export function usePostReaction(type: "like" | "bookmark" | "repost") {
       queryClient.invalidateQueries({ queryKey: postQueryKey(variables.postId) }),
       ...(type === "like" ? [queryClient.invalidateQueries({ queryKey: ["paymoment", "likes"] })] : []),
       ...(type === "bookmark" ? [queryClient.invalidateQueries({ queryKey: ["paymoment", "bookmarks"] })] : []),
+      ...(type === "repost" ? [queryClient.invalidateQueries({ queryKey: ["paymoment", "profile", "public"] })] : []),
     ]),
   });
 }

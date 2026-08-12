@@ -56,6 +56,15 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
 
   return (
     <article className={cn("overflow-hidden p-4 sm:p-5", variant === "feed" ? "rounded-xl border bg-card/55" : "bg-transparent")}>
+      {post.activityType === "repost" && post.repostedBy && (
+        <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <Icon icon="solar:repeat-linear" className="size-4 text-primary" aria-hidden="true" />
+          <Link href={`/u/${encodeURIComponent(post.repostedBy.handle)}`} className="rounded-sm text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {post.repostedBy.id === currentUser.id ? "You reposted" : `${post.repostedBy.name} reposted`}
+          </Link>
+          <span>· {post.activityAt ? relativePostTime(post.activityAt) : "now"}</span>
+        </div>
+      )}
       <header className="flex items-start gap-3">
         <Link href={`/u/${encodeURIComponent(post.author.handle)}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Open profile for ${post.author.handle}`}>
           <AuthorAvatar author={post.author} />
@@ -137,6 +146,14 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
       </Dialog>
     </article>
   );
+}
+
+function relativePostTime(value: string) {
+  const milliseconds = Date.now() - new Date(value).getTime();
+  if (milliseconds < 60_000) return "now";
+  if (milliseconds < 3_600_000) return `${Math.floor(milliseconds / 60_000)}m`;
+  if (milliseconds < 86_400_000) return `${Math.floor(milliseconds / 3_600_000)}h`;
+  return `${Math.floor(milliseconds / 86_400_000)}d`;
 }
 
 function PostContent({ post, variant }: { post: FeedPost; variant: "feed" | "detail" }) {

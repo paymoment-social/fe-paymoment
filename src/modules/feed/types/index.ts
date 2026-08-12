@@ -45,6 +45,9 @@ export type FeedPost = {
     options: { id: string; label: string; voterIds: string[]; voteCount: number }[];
   };
   quotedPost?: FeedPost;
+  activityType?: "post" | "repost";
+  activityAt?: string;
+  repostedBy?: FeedAuthor;
 };
 
 export type CreateMomentInput = { body: string; media?: string };

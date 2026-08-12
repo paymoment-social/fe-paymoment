@@ -29,6 +29,9 @@ export type ApiPost = {
   created_at: string;
   published_at?: string | null;
   is_owner: boolean;
+  activity_type?: "post" | "repost";
+  activity_at?: string;
+  reposted_by?: ApiProfile | null;
 };
 
 type ApiReply = {
@@ -132,6 +135,9 @@ export function mapApiPost(post: ApiPost): FeedPost {
       options: pollOptions.map((option) => ({ id: option.id, label: option.label, voteCount: option.vote_count, voterIds: [] })),
     } : undefined,
     quotedPost: post.quoted_post ? mapApiPost(post.quoted_post) : undefined,
+    activityType: post.activity_type,
+    activityAt: post.activity_at,
+    repostedBy: post.reposted_by ? mapAuthor(post.reposted_by) : undefined,
   };
 }
 
