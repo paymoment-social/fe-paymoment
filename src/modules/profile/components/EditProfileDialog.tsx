@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AuthorAvatar } from "@/modules/feed";
+import { uploadFeedMedia } from "@/modules/feed/services/feed.service";
 import { ApiError } from "@/lib/api/client";
 import { useUpdateProfile } from "../hooks/useUpdateProfile";
 import type { ProfileData } from "../types";
@@ -20,6 +21,7 @@ export function EditProfileDialog({ profile, open, onOpenChange }: { profile: Pr
   const [draft, setDraft] = useState(profile);
   const [formError, setFormError] = useState<string>();
   const avatarInput = useRef<HTMLInputElement>(null);
+  const coverInput = useRef<HTMLInputElement>(null);
 
   function update<K extends keyof ProfileData>(key: K, value: ProfileData[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -31,9 +33,16 @@ export function EditProfileDialog({ profile, open, onOpenChange }: { profile: Pr
       toast.error("Choose an image smaller than 2 MB");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => update("avatar", String(reader.result));
-    reader.readAsDataURL(file);
+    void uploadFeedMedia(file, "avatar").then((media) => update("avatar", media.gatewayUrl)).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "The profile photo could not be uploaded."));
+  }
+
+  function chooseCover(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
+      toast.error("Choose an image smaller than 10 MB");
+      return;
+    }
+    void uploadFeedMedia(file, "cover").then((media) => update("coverUrl", media.gatewayUrl)).catch((error: unknown) => toast.error(error instanceof Error ? error.message : "The cover could not be uploaded."));
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -64,6 +73,14 @@ export function EditProfileDialog({ profile, open, onOpenChange }: { profile: Pr
 
         <form onSubmit={submit} className="grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
           <div className="min-h-0 overflow-y-auto overscroll-contain px-5">
+            <div className="space-y-3 border-b py-5">
+              <div className="relative h-28 overflow-hidden rounded-xl border bg-gradient-to-br from-primary/35 via-primary/10 to-transparent" style={{ backgroundImage: draft.coverUrl ? `url(${draft.coverUrl})` : undefined, backgroundPosition: draft.coverPosition, backgroundSize: "cover" }}>
+                <span className="absolute bottom-2 left-3 rounded-full bg-background/75 px-2 py-1 text-xs">Profile cover</span>
+                <Button type="button" variant="secondary" className="absolute right-2 top-2 h-9 rounded-full" onClick={() => coverInput.current?.click()}><Icon icon="solar:gallery-add-linear" className="size-4" aria-hidden="true" /> {draft.coverUrl ? "Change" : "Add cover"}</Button>
+              </div>
+              <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { void chooseCover(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+              <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">Cover position</p><p className="mt-1 text-xs text-muted-foreground">Choose how the cover is framed.</p></div><select aria-label="Cover position" value={draft.coverPosition} onChange={(event) => update("coverPosition", event.target.value as ProfileData["coverPosition"])} className="h-10 rounded-xl border border-border/60 bg-secondary/70 px-3 text-sm"><option value="top">Top</option><option value="center">Center</option><option value="bottom">Bottom</option></select></div>
+            </div>
             <div className="flex items-center justify-between gap-4 border-b py-5">
               <div><p className="text-sm font-semibold">Profile photo</p><p className="mt-1 text-xs text-muted-foreground">PNG or JPG · up to 2 MB</p></div>
               <button type="button" className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={() => avatarInput.current?.click()} aria-label="Change profile photo">

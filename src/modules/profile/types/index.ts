@@ -1,5 +1,7 @@
 import type { FeedAuthor, FeedPost } from "@/modules/feed";
 export type ProfileData = FeedAuthor & {
+  coverUrl: string;
+  coverPosition: "top" | "center" | "bottom";
   joinedAt: string;
   location: string;
   website: string;
@@ -19,6 +21,8 @@ export type ApiUserProfile = {
   display_name: string;
   username: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
+  cover_position: "top" | "center" | "bottom";
   bio: string;
   birth_date?: string | null;
   location: string | null;

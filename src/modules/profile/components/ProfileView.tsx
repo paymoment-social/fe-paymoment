@@ -25,7 +25,7 @@ export function ProfileView() {
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-xl border bg-card/55">
-        <div className="h-32 bg-gradient-to-br from-primary/35 via-primary/10 to-transparent" />
+        <div className="h-32 bg-gradient-to-br from-primary/35 via-primary/10 to-transparent bg-cover bg-no-repeat" style={{ backgroundImage: data.coverUrl ? `url(${data.coverUrl})` : undefined, backgroundPosition: data.coverPosition }} />
         <div className="px-5 pb-5">
           <div className="-mt-10 flex items-end justify-between gap-4">
             <AuthorAvatar author={data} className="size-24 border-4 border-card" />

@@ -167,7 +167,7 @@ export async function getPost(postId: string) {
   return mapApiPost(response.data.post);
 }
 
-export async function uploadFeedMedia(file: File, purpose: "post" | "reply" | "article" | "message") {
+export async function uploadFeedMedia(file: File, purpose: "avatar" | "cover" | "post" | "reply" | "article" | "message") {
   const body = new FormData();
   body.set("file", file);
   body.set("purpose", purpose);
