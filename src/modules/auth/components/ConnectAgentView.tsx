@@ -90,7 +90,7 @@ function formatRelativeDate(value: string) {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function McpInstructions({ provider }: { provider: "chatgpt" | "claude" }) {
+export function McpInstructions({ provider }: { provider: "chatgpt" | "claude" }) {
   const [copied, setCopied] = useState(false);
   const isChatGpt = provider === "chatgpt";
   const copyUrl = async () => {
@@ -121,7 +121,7 @@ function McpInstructions({ provider }: { provider: "chatgpt" | "claude" }) {
       </ol>
       <div className="min-h-56 overflow-hidden rounded-xl border border-border bg-background p-2 lg:min-h-full">{SETUP_VIDEO_URL ? <iframe title={`${isChatGpt ? "ChatGPT" : "Claude"} PayMoment setup video`} src={SETUP_VIDEO_URL} className="h-full min-h-56 w-full rounded-lg lg:min-h-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen /> : <div className="flex h-full min-h-56 flex-col items-center justify-center rounded-lg bg-gradient-to-br from-secondary via-secondary/70 to-primary/10 px-6 py-8 text-center lg:min-h-full"><Image src="/paymoment.png" alt="PayMoment" width={876} height={179} priority className="h-auto w-full max-w-sm object-contain" /><p className="mt-6 max-w-xs text-sm font-medium text-foreground">Connect PayMoment to your AI workspace</p><p className="mt-1 max-w-xs text-xs leading-5 text-muted-foreground">Copy the MCP URL, add it as a connector, then approve access with your PayMoment account.</p></div>}</div>
     </div>
-    <DialogFooter className="m-0 rounded-b-xl border-border bg-background/40"><DialogClose render={<Button type="button" variant="outline" className="min-h-10" />}>Done</DialogClose></DialogFooter>
+    <DialogFooter className="m-0 rounded-b-xl border-border bg-background/40"><DialogClose render={<Button type="button" className="min-h-12 min-w-20 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90" />}>Done</DialogClose></DialogFooter>
   </DialogContent>;
 }
 

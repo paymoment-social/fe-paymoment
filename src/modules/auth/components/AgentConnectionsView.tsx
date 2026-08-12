@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ConnectAgentSetup } from "./ConnectAgentView";
+import { Dialog } from "@/components/ui/dialog";
+import { ConnectAgentSetup, McpInstructions } from "./ConnectAgentView";
 import { useAgentConnections, useRevokeAgentConnection } from "../hooks/useAgentConnections";
 import type { AgentConnection } from "../services/agent.service";
 
@@ -41,13 +41,7 @@ export function AgentConnectionsView() {
             {activeConnections.length > 0 && <div className="mt-3 grid gap-3 sm:grid-cols-2">{activeConnections.map((connection) => <AgentConnectionCard key={connection.clientId} connection={connection} />)}</div>}
           </section>
           <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
-            <DialogContent className="max-h-[90dvh] max-w-4xl gap-0 overflow-y-auto border-border bg-card p-0">
-              <DialogHeader className="border-b border-border px-6 py-5 pr-12">
-                <DialogTitle>Setup guide</DialogTitle>
-                <DialogDescription>Connect PayMoment to ChatGPT or Claude. Choose an agent to see the exact authorization steps.</DialogDescription>
-              </DialogHeader>
-              <div className="px-6 py-5"><ConnectAgentSetup onSkip={() => setSetupOpen(false)} /></div>
-            </DialogContent>
+            <McpInstructions provider="chatgpt" />
           </Dialog>
     </section>
   );

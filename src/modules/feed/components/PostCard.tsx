@@ -61,12 +61,12 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
           <AuthorAvatar author={post.author} />
           <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <p className="truncate text-sm font-semibold">{post.author.handle}</p>
+            <p className="truncate text-sm font-semibold">{post.author.name}</p>
             {isVerified && <VerifiedMark />}
             <span className="text-xs text-muted-foreground">· {post.createdAt}</span>
             <Icon icon="solar:earth-linear" className="size-3.5 text-muted-foreground" aria-label="Public moment" />
           </div>
-            <p className="text-xs text-muted-foreground">{post.author.name}</p>
+            <p className="text-xs text-muted-foreground">@{post.author.handle}</p>
           </div>
         </Link>
         <DropdownMenu>
