@@ -29,6 +29,7 @@ export type ApiPost = {
   created_at: string;
   published_at?: string | null;
   is_owner: boolean;
+  pinned?: boolean;
   activity_type?: "post" | "repost";
   activity_at?: string;
   reposted_by?: ApiProfile | null;
@@ -111,6 +112,7 @@ export function mapApiPost(post: ApiPost): FeedPost {
     liked: Boolean(viewer.liked),
     bookmarked: Boolean(viewer.bookmarked),
     reposted: Boolean(viewer.reposted),
+    pinned: Boolean(post.pinned),
     rewardClaimed: Boolean(viewer.reward_claimed),
     isOwner: post.is_owner,
     media: media.filter((item) => item.url && item.id !== post.article?.banner_media_id).map((item) => item.url!),
@@ -191,6 +193,10 @@ export const deletePost = (postId: string) => apiRequest<DataResponse<{ id: stri
 
 export async function setPostReaction(postId: string, type: "like" | "bookmark" | "repost", enabled: boolean) {
   return apiRequest<DataResponse<{ post_id: string; count: number }>>(`/api/v1/posts/${postId}/${type}`, { method: enabled ? "PUT" : "DELETE", headers: mutationHeaders() });
+}
+
+export async function setPostPinned(postId: string, pinned: boolean) {
+  return apiRequest<DataResponse<{ post_id: string; pinned: boolean }>>(`/api/v1/posts/${postId}/pin`, { method: pinned ? "PUT" : "DELETE", headers: mutationHeaders() });
 }
 
 export async function getReplies(postId: string, cursor?: string, parentId?: string) {

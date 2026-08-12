@@ -29,6 +29,7 @@ export type FeedPost = {
   liked?: boolean;
   bookmarked?: boolean;
   reposted?: boolean;
+  pinned?: boolean;
   rewardClaimed?: boolean;
   isOwner?: boolean;
   media?: string[];

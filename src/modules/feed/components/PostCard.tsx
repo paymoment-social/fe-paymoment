@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
 import { ReportPostDialog } from "@/modules/reports/components/ReportPostDialog";
 import { useClaimMomentReward } from "@/modules/rewards/hooks/useRewards";
-import { useDeleteMoment, usePollVote, usePostReaction, useUserFollow } from "../hooks/usePostMutations";
+import { useDeleteMoment, usePollVote, usePostPin, usePostReaction, useUserFollow } from "../hooks/usePostMutations";
 import { usePollVoters } from "../hooks/usePollVoters";
 import { recordPostShare } from "../services/feed.service";
 import type { FeedPost } from "../types";
@@ -38,6 +38,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
   const bookmarkMutation = usePostReaction("bookmark");
   const followMutation = useUserFollow();
   const deleteMutation = useDeleteMoment();
+  const pinMutation = usePostPin();
   const rewardMutation = useClaimMomentReward();
   const rewardIsClaimed = rewardClaimed || Boolean(post.rewardClaimed);
   const isVerified = post.author.id === currentUser.id ? currentUser.verified : post.author.verified;
@@ -100,6 +101,9 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
             )}
             {post.isOwner && <DropdownMenuItem disabled={deleteMutation.isPending} className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
               <Icon icon="solar:trash-bin-trash-linear" aria-hidden="true" /> Delete moment
+            </DropdownMenuItem>}
+            {post.isOwner && <DropdownMenuItem disabled={pinMutation.isPending} onClick={() => pinMutation.mutate({ postId: post.id, pinned: !post.pinned }, { onSuccess: () => toast.success(post.pinned ? "Removed from profile" : "Pinned to profile"), onError: (error) => toast.error(error.message) })}>
+              <Icon icon={post.pinned ? "solar:pin-cross-linear" : "solar:pin-linear"} aria-hidden="true" /> {post.pinned ? "Unpin from profile" : "Pin to profile"}
             </DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>

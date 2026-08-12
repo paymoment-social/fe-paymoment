@@ -9,7 +9,7 @@ import { NOTIFICATIONS_QUERY_KEY } from "@/modules/notifications/constants";
 import type { NotificationPage } from "@/modules/notifications/types";
 import type { ProfileData } from "@/modules/profile/types";
 import { FEED_QUERY_KEY } from "../constants";
-import { createPost, createReply, deletePost, setPostReaction, setReplyLike, setUserFollow, votePoll } from "../services/feed.service";
+import { createPost, createReply, deletePost, setPostPinned, setPostReaction, setReplyLike, setUserFollow, votePoll } from "../services/feed.service";
 import type { FeedPost, FeedReply } from "../types";
 import { postQueryKey } from "./useFeed";
 import { repliesQueryKey } from "./useReplies";
@@ -144,6 +144,13 @@ function updateAuthorCaches(queryClient: ReturnType<typeof useQueryClient>, user
   queryClient.setQueriesData<FeedPost>({ queryKey: ["paymoment", "post"] }, (current) => current?.author.id === userId ? update(current) : current);
 }
 
+function removeRepostActivityFromProfileCaches(queryClient: ReturnType<typeof useQueryClient>, postId: string) {
+  queryClient.setQueriesData<InfiniteData<PostCollectionPage>>({ queryKey: ["paymoment", "profile", "public"] }, (current) => {
+    if (!isPostCollectionInfiniteData(current)) return current;
+    return { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.filter((post) => !(post.id === postId && post.activityType === "repost")) })) };
+  });
+}
+
 type FollowRelationship = NonNullable<FeedPost["author"]["relationship"]>;
 
 function updateFollowCaches(queryClient: ReturnType<typeof useQueryClient>, userId: string, relationship: FollowRelationship) {
@@ -193,6 +200,7 @@ export function usePostReaction(type: "like" | "bookmark" | "repost") {
         const count = countKey ? Math.max(0, post[countKey] + (enabled === wasActive ? 0 : enabled ? 1 : -1)) : undefined;
         return { ...post, [activeKey]: enabled, ...(countKey ? { [countKey]: count } : {}) };
       });
+      if (type === "repost" && !enabled) removeRepostActivityFromProfileCaches(queryClient, postId);
       return context;
     },
     onError: (_error, _variables, context) => restorePostCaches(queryClient, context),
@@ -203,6 +211,17 @@ export function usePostReaction(type: "like" | "bookmark" | "repost") {
       ...(type === "bookmark" ? [queryClient.invalidateQueries({ queryKey: ["paymoment", "bookmarks"] })] : []),
       ...(type === "repost" ? [queryClient.invalidateQueries({ queryKey: ["paymoment", "profile", "public"] })] : []),
     ]),
+  });
+}
+
+export function usePostPin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postId, pinned }: { postId: string; pinned: boolean }) => setPostPinned(postId, pinned),
+    onSuccess: (_response, variables) => {
+      updatePostCaches(queryClient, variables.postId, (post) => ({ ...post, pinned: variables.pinned }));
+      void queryClient.invalidateQueries({ queryKey: ["paymoment", "profile", "public"] });
+    },
   });
 }
 
