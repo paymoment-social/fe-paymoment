@@ -4,14 +4,15 @@ import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AuthorAvatar, PostCard, VerifiedMark, useFeed } from "@/modules/feed";
+import { AuthorAvatar, PostCard, VerifiedMark } from "@/modules/feed";
 import { useProfile } from "../hooks/useProfile";
+import { usePublicProfilePosts } from "../hooks/usePublicProfile";
 import { formatProfileCount } from "../utils/formatProfileCount";
 import { EditProfileDialog } from "./EditProfileDialog";
 
 export function ProfileView() {
   const profile = useProfile();
-  const feed = useFeed();
+  const profilePosts = usePublicProfilePosts(profile.data?.handle ?? "");
   const [editing, setEditing] = useState(false);
 
   if (profile.isLoading) return <Skeleton className="h-80 rounded-xl" />;
@@ -19,7 +20,7 @@ export function ProfileView() {
 
   const data = profile.data;
   const verified = Boolean(data.verified);
-  const ownMoments = feed.data?.filter((post) => post.author.id === data.id);
+  const ownMoments = profilePosts.data?.pages.flatMap((page) => page.posts) ?? [];
 
   return (
     <div className="space-y-4">
@@ -45,8 +46,9 @@ export function ProfileView() {
       </section>
 
       <div className="space-y-3">
-        {ownMoments?.map((post) => <PostCard key={post.id} post={post} />)}
-        {ownMoments && ownMoments.length === 0 && <section className="rounded-xl border bg-card p-10 text-center"><Icon icon="solar:pen-new-square-linear" className="mx-auto size-10 text-primary" aria-hidden="true" /><h3 className="mt-3 font-semibold">Your Moments will live here</h3><p className="text-sm text-muted-foreground">Create your first Moment from the feed.</p></section>}
+        {profilePosts.isLoading ? [0, 1, 2].map((item) => <Skeleton key={item} className="h-48 rounded-xl" />) : profilePosts.isError ? <section className="rounded-xl border border-destructive/30 bg-card p-5"><p className="font-medium">Could not load your profile activity.</p><Button variant="outline" className="mt-3 h-10" onClick={() => void profilePosts.refetch()}>Try again</Button></section> : ownMoments.map((post) => <PostCard key={`${post.id}-${post.activityType ?? "post"}-${post.activityAt ?? ""}`} post={post} />)}
+        {!profilePosts.isLoading && !profilePosts.isError && ownMoments.length === 0 && <section className="rounded-xl border bg-card p-10 text-center"><Icon icon="solar:pen-new-square-linear" className="mx-auto size-10 text-primary" aria-hidden="true" /><h3 className="mt-3 font-semibold">Your Moments will live here</h3><p className="text-sm text-muted-foreground">Create your first Moment from the feed.</p></section>}
+        {profilePosts.hasNextPage && <div className="flex justify-center"><Button variant="outline" className="h-10 rounded-full" disabled={profilePosts.isFetchingNextPage} onClick={() => void profilePosts.fetchNextPage()}>{profilePosts.isFetchingNextPage ? "Loading..." : "Load more activity"}</Button></div>}
       </div>
 
       {editing && <EditProfileDialog profile={data} open={editing} onOpenChange={setEditing} />}
