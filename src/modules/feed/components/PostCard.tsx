@@ -66,6 +66,12 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
           <span>· {post.activityAt ? relativePostTime(post.activityAt) : "now"}</span>
         </div>
       )}
+      {post.pinned && (
+        <div className="mb-3 flex items-center gap-2 text-xs font-medium text-primary">
+          <Icon icon="solar:pin-bold" className="size-4" aria-hidden="true" />
+          <span>Pinned</span>
+        </div>
+      )}
       <header className="flex items-start gap-3">
         <Link href={`/u/${encodeURIComponent(post.author.handle)}`} className="flex min-w-0 flex-1 items-start gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Open profile for ${post.author.handle}`}>
           <AuthorAvatar author={post.author} />
