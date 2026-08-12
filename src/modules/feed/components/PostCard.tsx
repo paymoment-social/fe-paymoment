@@ -175,7 +175,7 @@ function PostContent({ post, variant }: { post: FeedPost; variant: "feed" | "det
           {post.tag && <p className="mt-3"><Link href={`/discover?q=${encodeURIComponent(post.tag)}`} className="rounded-sm text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{post.tag}</Link></p>}
         </div>
       )}
-      {post.media && <PostMedia media={post.media} />}
+      {post.media && <PostMedia media={post.media} mediaTypes={post.mediaTypes} />}
       {post.article && <ArticlePreview article={post.article} expanded={variant === "detail"} />}
       {post.poll && <PollPreview post={post} />}
       {post.card && (
@@ -236,12 +236,12 @@ function ActionButton({ icon, label, count, active, pending = false, onClick }: 
   );
 }
 
-function PostMedia({ media }: { media: string[] }) {
+function PostMedia({ media, mediaTypes }: { media: string[]; mediaTypes?: string[] }) {
   return (
     <div className={cn("mt-4 grid overflow-hidden rounded-xl border bg-muted", media.length > 1 && "grid-cols-2", media.length > 2 && "grid-rows-2")}>
       {media.map((source, index) => (
         <div key={source} className={cn("relative min-h-44 overflow-hidden border-border", media.length === 1 && "aspect-[16/9]", media.length === 3 && index === 0 && "row-span-2 min-h-80")}>
-          <Image src={source} alt={`Moment attachment ${index + 1}`} fill sizes="(max-width: 768px) 100vw, 680px" className="object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:hover:scale-[1.02]" unoptimized={source.startsWith("data:")} />
+          {(mediaTypes?.[index] ?? "").startsWith("video/") ? <video src={source} controls playsInline preload="metadata" className="absolute inset-0 size-full object-cover" aria-label={`Moment video ${index + 1}`} /> : <Image src={source} alt={`Moment attachment ${index + 1}`} fill sizes="(max-width: 768px) 100vw, 680px" className="object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:hover:scale-[1.02]" unoptimized={source.startsWith("data:")} />}
         </div>
       ))}
     </div>

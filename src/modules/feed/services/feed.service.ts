@@ -116,6 +116,7 @@ export function mapApiPost(post: ApiPost): FeedPost {
     rewardClaimed: Boolean(viewer.reward_claimed),
     isOwner: post.is_owner,
     media: media.filter((item) => item.url && item.id !== post.article?.banner_media_id).map((item) => item.url!),
+    mediaTypes: media.filter((item) => item.url && item.id !== post.article?.banner_media_id).map((item) => item.mime_type),
     article: post.article ? {
       eyebrow: post.article.eyebrow ?? "PayMoment article",
       title: post.article.title,

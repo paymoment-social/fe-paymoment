@@ -33,6 +33,7 @@ export type FeedPost = {
   rewardClaimed?: boolean;
   isOwner?: boolean;
   media?: string[];
+  mediaTypes?: string[];
   card?: { eyebrow: string; title: string; description: string };
   article?: { eyebrow: string; title: string; description: string; contentHtml: string; banner?: { image?: string; color: string; position: "left" | "center" | "right" }; bannerMediaId?: string; draftVersion?: number; status?: "draft" | "published" };
   poll?: {

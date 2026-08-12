@@ -37,7 +37,7 @@ const compactEmojiPickerStyle = {
 } as CSSProperties;
 
 const tools = [
-  { icon: "solar:gallery-linear", label: "Add image", action: "image" },
+  { icon: "solar:gallery-linear", label: "Add image or video", action: "image" },
   { icon: "solar:chart-square-linear", label: "Add poll", action: "poll" },
   { icon: "solar:smile-circle-linear", label: "Add emoji", action: "emoji" },
   { icon: "solar:document-text-linear", label: "Write article", action: "article" },
@@ -97,12 +97,13 @@ export function Composer({ compact = false }: { compact?: boolean }) {
 
   function chooseFile(file?: File) {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Choose an image file");
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      toast.error("Choose an image or video file");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be smaller than 5 MB");
+    const maxBytes = file.type.startsWith("video/") ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toast.error(file.type.startsWith("video/") ? "Video must be smaller than 50 MB" : "Image must be smaller than 10 MB");
       return;
     }
     setMediaFile(file);
@@ -193,7 +194,7 @@ export function Composer({ compact = false }: { compact?: boolean }) {
 
       {media && (
         <div className="relative ml-14 overflow-hidden rounded-xl border bg-muted">
-          <Image src={media} alt="Selected upload preview" width={720} height={420} unoptimized className="max-h-72 w-full object-cover" />
+          {mediaFile?.type.startsWith("video/") ? <video src={media} controls playsInline className="max-h-72 w-full object-cover" aria-label="Selected video preview" /> : <Image src={media} alt="Selected upload preview" width={720} height={420} unoptimized className="max-h-72 w-full object-cover" />}
           <Button type="button" variant="secondary" size="icon" className="absolute right-2 top-2 size-10 rounded-full" aria-label="Remove image" onClick={() => { setMedia(undefined); setMediaFile(undefined); }}>
             <Icon icon="solar:close-circle-bold" className="size-5" aria-hidden="true" />
           </Button>
@@ -205,7 +206,7 @@ export function Composer({ compact = false }: { compact?: boolean }) {
       {submitError && <p role="alert" className="ml-14 text-sm text-destructive">{submitError}</p>}
 
       <div className="relative flex items-center justify-between gap-3 pl-12">
-        <input ref={fileInput} type="file" accept="image/*" className="sr-only" aria-label="Upload image" onChange={(event) => chooseFile(event.target.files?.[0])} />
+        <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" className="sr-only" aria-label="Upload image or video" onChange={(event) => chooseFile(event.target.files?.[0])} />
         <div className="flex items-center gap-1">
           {tools.map((tool) => (
             <Button
