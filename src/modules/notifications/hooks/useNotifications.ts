@@ -48,11 +48,17 @@ export function useRespondFollowRequest() {
     onMutate: async ({ accepted, notificationId }) => {
       await client.cancelQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
       const snapshots = client.getQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY });
-      client.setQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY }, (current) => isNotificationInfiniteData(current) ? { ...current, pages: current.pages.map((page) => ({ ...page, notifications: page.notifications.map((item) => item.id === notificationId ? { ...item, read: true, followAction: accepted ? "accepted" : "declined", text: accepted ? "accepted your follow request." : "declined your follow request." } : item) })) } : current);
+      client.setQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY }, (current) => isNotificationInfiniteData(current) ? { ...current, pages: current.pages.map((page) => ({ ...page, notifications: page.notifications.map((item) => item.id === notificationId ? { ...item, read: true, followAction: accepted ? "accepted" : "declined", text: accepted ? "accepted your follow request." : "declined your follow request.", user: accepted && item.user ? { ...item.user, relationship: "following" } : item.user } : item) })) } : current);
       return { snapshots };
     },
     onError: (_error, _variables, context) => context?.snapshots.forEach(([key, value]) => client.setQueryData(key, value)),
-    onSettled: () => { void client.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY }); void client.invalidateQueries({ queryKey: ["paymoment", "profile", "public"] }); },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      void client.invalidateQueries({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "unread-count"] });
+      void client.invalidateQueries({ queryKey: ["paymoment", "profile"] });
+      void client.invalidateQueries({ queryKey: ["paymoment", "feed"] });
+      void client.invalidateQueries({ queryKey: ["paymoment", "discover"] });
+    },
   });
 }
 export function useUpdateNotificationPreferences() {
