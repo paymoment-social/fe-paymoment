@@ -7,18 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "../hooks/useSession";
 
-export function AuthGate({ children, requireOnboarding = true }: { children: ReactNode; requireOnboarding?: boolean }) {
+export function AuthGate({ children, requireOnboarding = true, returnPath }: { children: ReactNode; requireOnboarding?: boolean; returnPath?: string }) {
   const session = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (session.error instanceof ApiError && session.error.status === 401) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      router.replace(`/login?next=${encodeURIComponent(returnPath ?? pathname)}`);
     } else if (session.data && requireOnboarding && !session.data.onboarding_completed) {
       router.replace("/onboarding");
     }
-  }, [pathname, requireOnboarding, router, session.data, session.error]);
+  }, [pathname, requireOnboarding, returnPath, router, session.data, session.error]);
 
   if (session.isLoading || (session.data && requireOnboarding && !session.data.onboarding_completed)) {
     return <main className="mx-auto min-h-dvh w-full max-w-5xl space-y-4 px-4 py-6"><Skeleton className="h-14 rounded-xl" /><Skeleton className="h-80 rounded-xl" /></main>;

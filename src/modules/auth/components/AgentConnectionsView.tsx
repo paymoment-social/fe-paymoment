@@ -12,6 +12,7 @@ export function AgentConnectionsView() {
   const [setupOpen, setSetupOpen] = useState(false);
   const connections = useAgentConnections();
   const activeConnections = connections.data?.filter((connection) => connection.status === "active") ?? [];
+  const expiredConnections = connections.data?.filter((connection) => connection.status === "expired") ?? [];
   const activeCount = activeConnections.length;
 
   return (
@@ -39,6 +40,7 @@ export function AgentConnectionsView() {
             {connections.isError && <div role="alert" className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"><p>Couldn&apos;t load your agent connections.</p><button type="button" onClick={() => void connections.refetch()} className="mt-2 min-h-9 rounded-lg px-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Try again</button></div>}
             {activeConnections.length === 0 && <div className="mt-3 rounded-xl border border-dashed border-border p-8 text-center"><Bot className="mx-auto size-7 text-muted-foreground" aria-hidden="true" /><p className="mt-3 text-sm font-medium">No active agent yet</p><p className="mt-1 text-xs text-muted-foreground">Connect an agent above to use PayMoment from ChatGPT or Claude.</p></div>}
             {activeConnections.length > 0 && <div className="mt-3 grid gap-3 sm:grid-cols-2">{activeConnections.map((connection) => <AgentConnectionCard key={connection.clientId} connection={connection} />)}</div>}
+            {expiredConnections.length > 0 && <div className="mt-6"><h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Expired</h3><div className="mt-3 grid gap-3 opacity-80 sm:grid-cols-2">{expiredConnections.map((connection) => <AgentConnectionCard key={connection.clientId} connection={connection} />)}</div></div>}
           </section>
           <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
             <McpInstructions provider="chatgpt" />
@@ -50,7 +52,11 @@ export function AgentConnectionsView() {
 function AgentConnectionCard({ connection }: { connection: AgentConnection }) {
   const revoke = useRevokeAgentConnection();
   const active = connection.status === "active";
-  return <article className="rounded-xl border border-border bg-card p-4"><div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-sm font-semibold">{connection.name.slice(0, 1).toUpperCase()}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${active ? "bg-emerald-400/10 text-emerald-300" : "bg-secondary text-muted-foreground"}`}>{active ? "Active" : "Revoked"}</span><h3 className="truncate text-sm font-semibold">{connection.name}</h3></div><p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">{connection.clientId}</p></div></div><div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3"><span className="text-xs text-muted-foreground">{connection.lastUsedAt ? `Used ${formatRelativeDate(connection.lastUsedAt)}` : `Added ${formatRelativeDate(connection.grantedAt)}`}</span>{active && <Button type="button" variant="outline" size="sm" className="h-8 text-xs text-destructive hover:text-destructive" disabled={revoke.isPending} onClick={() => revoke.mutate(connection.clientId)}>{revoke.isPending ? "Revoking..." : "Revoke"}</Button>}</div></article>;
+  return <article className="rounded-xl border border-border bg-card p-4"><div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-sm font-semibold">{connection.name.slice(0, 1).toUpperCase()}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${active ? "bg-emerald-400/10 text-emerald-300" : "bg-secondary text-muted-foreground"}`}>{active ? "Active" : connection.status === "expired" ? "Expired" : "Revoked"}</span><h3 className="truncate text-sm font-semibold">{connection.name}</h3></div><p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">{connection.clientId}</p><p className="mt-1 text-xs text-muted-foreground">{connection.expiresAt ? `${active ? "Expires" : "Expired"} ${formatDate(connection.expiresAt)}` : "No expiration"}</p></div></div><div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3"><span className="text-xs text-muted-foreground">{connection.lastUsedAt ? `Used ${formatRelativeDate(connection.lastUsedAt)}` : `Added ${formatRelativeDate(connection.grantedAt)}`}</span>{active && <Button type="button" variant="outline" size="sm" className="h-8 text-xs text-destructive hover:text-destructive" disabled={revoke.isPending} onClick={() => revoke.mutate(connection.clientId)}>{revoke.isPending ? "Revoking..." : "Revoke"}</Button>}</div></article>;
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
 }
 
 function formatRelativeDate(value: string) {
