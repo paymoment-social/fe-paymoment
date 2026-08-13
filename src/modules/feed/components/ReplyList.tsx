@@ -10,7 +10,7 @@ import { useReplyLike } from "../hooks/usePostMutations";
 import type { FeedReply } from "../types";
 import { AuthorAvatar, VerifiedMark } from "./AuthorAvatar";
 import { ReplyComposer } from "./ReplyComposer";
-import { tokenizePostBody } from "../utils/postTokens";
+import { getPostUrlMeta, tokenizePostBody } from "../utils/postTokens";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -37,6 +37,10 @@ function ReplyThread({ postId, reply, depth = 0 }: { postId: string; reply: Feed
         <div className="flex items-center gap-1.5"><span className="truncate text-sm font-semibold">{reply.author.handle}</span>{reply.author.verified && <VerifiedMark />}<span className="text-xs text-muted-foreground">· {reply.createdAt}</span></div>
         <p className="mt-1 whitespace-pre-line text-[15px] leading-6">{tokenizePostBody(reply.body).map((token, index) => {
           if (token.kind === "text") return <span key={`${token.value}-${index}`}>{token.value}</span>;
+          if (token.kind === "url") {
+            const meta = getPostUrlMeta(token.value);
+            return <a key={`${token.value}-${index}`} href={token.value} target="_blank" rel="noreferrer" title={meta.label} className="inline break-all rounded-sm font-medium text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${meta.label}: ${token.value}`}>{token.value}<Icon icon={meta.isExplorer ? "solar:compass-linear" : "solar:arrow-right-up-linear"} className="ml-1 inline-block size-3.5 align-[-0.125em]" aria-hidden="true" /></a>;
+          }
           const href = token.kind === "mention"
             ? `/u/${encodeURIComponent(token.value.slice(1))}`
             : `/discover?q=${encodeURIComponent(token.value)}`;

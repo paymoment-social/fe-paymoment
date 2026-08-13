@@ -18,7 +18,7 @@ import { usePollVoters } from "../hooks/usePollVoters";
 import { recordPostShare } from "../services/feed.service";
 import type { FeedPost } from "../types";
 import { formatEngagement } from "../utils/formatEngagement";
-import { tokenizePostBody } from "../utils/postTokens";
+import { getPostUrlMeta, tokenizePostBody } from "../utils/postTokens";
 import { AuthorAvatar, VerifiedMark } from "./AuthorAvatar";
 import { QuoteComposer } from "./QuoteComposer";
 import { QuotedPostCard } from "./QuotedPostCard";
@@ -117,11 +117,7 @@ export function PostCard({ post, variant = "feed", profileContext = false }: { p
         </DropdownMenu>
       </header>
 
-      {variant === "feed" && !post.poll ? (
-        <Link href={`/post/${post.id}`} className="group/post block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Open moment by ${post.author.handle}`}>
-          <PostContent post={post} variant={variant} />
-        </Link>
-      ) : <PostContent post={post} variant={variant} />}
+      <PostContent post={post} variant={variant} />
       {post.quotedPost && <QuotedPostCard post={post.quotedPost} />}
 
       <footer className="mt-3 flex items-center justify-between gap-3 pt-2">
@@ -175,6 +171,10 @@ function PostContent({ post, variant }: { post: FeedPost; variant: "feed" | "det
         <div className="mt-3 whitespace-pre-line text-base leading-6 text-foreground">
           {tokenizePostBody(post.body).map((token, index) => {
             if (token.kind === "text") return <span key={`${token.value}-${index}`}>{token.value}</span>;
+            if (token.kind === "url") {
+              const meta = getPostUrlMeta(token.value);
+              return <a key={`${token.value}-${index}`} href={token.value} target="_blank" rel="noreferrer" title={meta.label} className="inline break-all rounded-sm font-medium text-primary underline decoration-primary/40 underline-offset-2 transition-colors hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${meta.label}: ${token.value}`}>{token.value}<Icon icon={meta.isExplorer ? "solar:compass-linear" : "solar:arrow-right-up-linear"} className="ml-1 inline-block size-3.5 align-[-0.125em]" aria-hidden="true" /></a>;
+            }
             const href = token.kind === "mention"
               ? `/u/${encodeURIComponent(token.value.slice(1))}`
               : `/discover?q=${encodeURIComponent(token.value)}`;
