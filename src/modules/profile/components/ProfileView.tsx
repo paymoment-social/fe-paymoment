@@ -43,7 +43,7 @@ export function ProfileView() {
           {data.interests && <p className="mt-3 text-sm text-primary">{data.interests.split(",").map((item) => `#${item.trim().replace(/\s+/g, "")}`).join("  ")}</p>}
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Icon icon="solar:map-point-linear" aria-hidden="true" />{data.location}</span>
-            {websiteUrl && <a href={websiteUrl} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-1 rounded-sm text-primary underline decoration-primary/40 underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon icon="solar:link-linear" aria-hidden="true" />Website</a>}
+            {websiteUrl && <a href={websiteUrl} target="_blank" rel="noopener noreferrer nofollow" className="flex min-w-0 items-center gap-1 rounded-sm text-primary underline decoration-primary/40 underline-offset-2 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon icon="solar:link-linear" aria-hidden="true" /><span className="truncate">{data.website}</span></a>}
             <span className="flex items-center gap-1"><Icon icon="solar:calendar-linear" aria-hidden="true" />Joined {data.joinedAt}</span>
             {data.privateProfile && <span className="flex items-center gap-1"><Icon icon="solar:lock-keyhole-linear" aria-hidden="true" />Private</span>}
           </div>
