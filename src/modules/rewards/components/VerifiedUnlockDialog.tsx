@@ -5,10 +5,9 @@ import { Icon } from "@iconify/react";
 import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
+import { useProfile } from "@/modules/profile/hooks/useProfile";
+import { useVerifiedAchievementSeen } from "@/modules/profile/hooks/useVerifiedAchievementSeen";
 import { VERIFIED_BOX_THRESHOLD } from "../constants";
-
-const STORAGE_KEY = "paymoment-verified-achievement-seen-v2";
 
 const BENEFITS = [
   { icon: "solar:verified-check-bold", label: "Verified mark" },
@@ -18,20 +17,25 @@ const BENEFITS = [
 
 export function VerifiedUnlockDialog() {
   const reduceMotion = useReducedMotion();
-  const currentUser = useCurrentUser();
-  const eligible = Boolean(currentUser.verified);
+  const profile = useProfile();
+  const markSeen = useVerifiedAchievementSeen();
+  const eligible = Boolean(profile.data?.verified);
+  const alreadySeen = Boolean(profile.data?.verifiedAchievementSeenAt);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (eligible && window.localStorage.getItem(STORAGE_KEY) !== "true") {
+    if (eligible && !alreadySeen) {
       const frame = window.requestAnimationFrame(() => setOpen(true));
       return () => window.cancelAnimationFrame(frame);
     }
-  }, [eligible]);
+  }, [alreadySeen, eligible]);
 
   function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen && eligible && !alreadySeen) {
+      if (!markSeen.isPending) markSeen.mutate(undefined, { onSuccess: () => setOpen(false) });
+      return;
+    }
     setOpen(nextOpen);
-    if (!nextOpen) window.localStorage.setItem(STORAGE_KEY, "true");
   }
 
   return (
@@ -70,8 +74,9 @@ export function VerifiedUnlockDialog() {
         </div>
 
         <div className="border-t border-border/80 bg-background/35 p-4">
-          <DialogClose render={<Button className="h-12 w-full rounded-full bg-gradient-to-r from-primary to-violet-600 font-semibold text-primary-foreground hover:opacity-90" />}>
-            Continue as Verified
+          {markSeen.isError && <p role="alert" className="mb-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-left text-sm text-destructive">Could not save this achievement. Try again.</p>}
+          <DialogClose render={<Button className="h-12 w-full rounded-full bg-gradient-to-r from-primary to-violet-600 font-semibold text-primary-foreground hover:opacity-90" disabled={markSeen.isPending} aria-busy={markSeen.isPending} />}>
+            {markSeen.isPending ? "Saving..." : "Continue as Verified"}
             <Icon icon="solar:arrow-right-linear" className="size-5" aria-hidden="true" />
           </DialogClose>
           <p className="mt-3 text-center text-xs text-muted-foreground">The verified mark is permanent and costs no Box.</p>

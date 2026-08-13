@@ -15,6 +15,7 @@ export function mapProfile(user: ApiUserProfile): ProfileData {
     coverUrl: user.cover_url ?? "",
     coverPosition: user.cover_position ?? "center",
     verified: user.entitlement.verified,
+    verifiedAchievementSeenAt: user.entitlement.verified_achievement_seen_at ?? null,
     bio: user.bio,
     followers: user.followers_count,
     following: user.following_count,
@@ -37,6 +38,14 @@ export function mapProfile(user: ApiUserProfile): ProfileData {
 export async function getProfile(): Promise<ProfileData> {
   const response = await apiRequest<ProfileResponse>("/api/v1/users/me");
   return mapProfile(response.data.user);
+}
+
+export async function markVerifiedAchievementSeen(): Promise<string> {
+  const response = await apiRequest<{ data: { seen_at: string } }>("/api/v1/users/me/verified-achievement-seen", {
+    method: "PUT",
+    headers: mutationHeaders(),
+  });
+  return response.data.seen_at;
 }
 
 export async function getPublicProfile(username: string): Promise<ProfileData> {

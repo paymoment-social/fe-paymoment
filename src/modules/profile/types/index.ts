@@ -1,5 +1,6 @@
 import type { FeedAuthor, FeedPost } from "@/modules/feed";
 export type ProfileData = FeedAuthor & {
+  verifiedAchievementSeenAt: string | null;
   coverUrl: string;
   coverPosition: "top" | "center" | "bottom";
   joinedAt: string;
@@ -34,7 +35,7 @@ export type ApiUserProfile = {
   onboarding_completed: boolean;
   joined_at: string;
   privacy: { show_paybox_badge: boolean; show_recent_views: boolean; private_profile: boolean; allow_messages: boolean };
-  entitlement: { verified: boolean; verified_at: string | null; points_balance: number; verified_threshold: number };
+  entitlement: { verified: boolean; verified_at: string | null; verified_achievement_seen_at?: string | null; points_balance: number; verified_threshold: number };
   relationship?: "none" | "pending" | "following" | "blocked" | "muted";
 };
 export type ProfilePostsPage = { posts: FeedPost[]; nextCursor: string | null };
