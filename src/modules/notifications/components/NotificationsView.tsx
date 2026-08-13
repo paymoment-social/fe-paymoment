@@ -27,7 +27,9 @@ export function NotificationsView() {
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = result;
   const loadMoreRef = useCallback((node: HTMLDivElement | null) => {
     if (!node || !hasNextPage || isFetchingNextPage) return;
-    const observer = new IntersectionObserver(([entry]) => { if (entry?.isIntersecting) void fetchNextPage(); }, { rootMargin: "320px 0px" });
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting && !isFetchingNextPage) void fetchNextPage();
+    }, { rootMargin: "320px 0px" });
     observer.observe(node);
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);

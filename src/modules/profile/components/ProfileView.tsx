@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthorAvatar, PostCard, VerifiedMark } from "@/modules/feed";
@@ -15,6 +15,15 @@ export function ProfileView() {
   const profile = useProfile();
   const profilePosts = usePublicProfilePosts(profile.data?.handle ?? "");
   const [editing, setEditing] = useState(false);
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = profilePosts;
+  const loadMoreRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node || !hasNextPage || isFetchingNextPage) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting && !isFetchingNextPage) void fetchNextPage();
+    }, { rootMargin: "480px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   if (profile.isLoading) return <Skeleton className="h-80 rounded-xl" />;
   if (!profile.data) return <section className="rounded-xl border p-5"><p>Couldn&apos;t load your profile.</p><Button variant="outline" className="mt-3 h-10" onClick={() => void profile.refetch()}>Try again</Button></section>;
@@ -54,10 +63,20 @@ export function ProfileView() {
       <div className="space-y-3">
         {profilePosts.isLoading ? [0, 1, 2].map((item) => <Skeleton key={item} className="h-48 rounded-xl" />) : profilePosts.isError ? <section className="rounded-xl border border-destructive/30 bg-card p-5"><p className="font-medium">Could not load your profile activity.</p><Button variant="outline" className="mt-3 h-10" onClick={() => void profilePosts.refetch()}>Try again</Button></section> : ownMoments.map((post) => <PostCard key={`${post.id}-${post.activityType ?? "post"}-${post.activityAt ?? ""}`} post={post} profileContext />)}
         {!profilePosts.isLoading && !profilePosts.isError && ownMoments.length === 0 && <section className="rounded-xl border bg-card p-10 text-center"><Icon icon="solar:pen-new-square-linear" className="mx-auto size-10 text-primary" aria-hidden="true" /><h3 className="mt-3 font-semibold">Your Moments will live here</h3><p className="text-sm text-muted-foreground">Create your first Moment from the feed.</p></section>}
-        {profilePosts.hasNextPage && <div className="flex flex-col items-center gap-2"><Button variant="outline" className="h-10 rounded-full" disabled={profilePosts.isFetchingNextPage} onClick={() => void profilePosts.fetchNextPage()}>{profilePosts.isFetchingNextPage ? "Loading..." : "Load more activity"}</Button>{profilePosts.isFetchNextPageError && <p className="text-center text-xs text-destructive" role="alert">Could not load more activity. <button type="button" className="font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => void profilePosts.fetchNextPage()}>Try again</button></p>}</div>}
+        {hasNextPage && <div ref={loadMoreRef} className="min-h-24 py-3" aria-live="polite">{isFetchingNextPage && <ProfileActivitySkeleton />}{profilePosts.isFetchNextPageError && <div className="flex flex-col items-center gap-2"><p className="text-center text-xs text-destructive" role="alert">Could not load more activity.</p><Button variant="outline" className="h-10 rounded-full" onClick={() => void fetchNextPage()}>Try again</Button></div>}</div>}
+        {!hasNextPage && ownMoments.length > 0 && <p className="py-3 text-center text-xs text-muted-foreground">You&apos;re all caught up.</p>}
       </div>
 
       {editing && <EditProfileDialog profile={data} open={editing} onOpenChange={setEditing} />}
     </div>
   );
+}
+
+function ProfileActivitySkeleton() {
+  return <div className="space-y-3" aria-label="Loading more activity" aria-busy="true">
+    {[0, 1].map((item) => <div key={item} className="space-y-3 rounded-xl border bg-card/45 p-4 sm:p-5">
+      <div className="flex gap-3"><Skeleton className="size-10 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-3.5 w-32" /><Skeleton className="h-3 w-20" /></div></div>
+      <Skeleton className="h-14 w-full" />
+    </div>)}
+  </div>;
 }
