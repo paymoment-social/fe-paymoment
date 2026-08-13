@@ -10,11 +10,10 @@ import { useUpdateProfile } from "../hooks/useUpdateProfile";
 import { useMyReports } from "@/modules/reports/hooks/useReport";
 import type { ProfileData } from "../types";
 
-type PrivacyKey = "showPayBoxBadge" | "showRecentViews" | "privateProfile" | "allowMessages";
+type PrivacyKey = "showPayBoxBadge" | "showRecentViews" | "allowMessages";
 const options: Array<{ key: PrivacyKey; title: string; description: string }> = [
   { key: "showPayBoxBadge", title: "Show PayMoment badge", description: "Display your PayMoment connection on your profile." },
   { key: "showRecentViews", title: "Show recent views", description: "Allow eligible profile view activity to be shown." },
-  { key: "privateProfile", title: "Private profile", description: "Require follow approval before people can see followers-only Moments." },
   { key: "allowMessages", title: "Allow message requests", description: "Let people ask permission to start a private conversation." },
 ];
 
