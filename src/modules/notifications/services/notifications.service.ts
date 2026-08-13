@@ -27,8 +27,6 @@ function notificationHref(item: ApiNotification) {
 function mapNotification(item: ApiNotification): PayNotification {
   const followAction = item.type === "follow" && (item.payload.action === "requested" || item.payload.action === "following" || item.payload.action === "accepted" || item.payload.action === "declined") ? item.payload.action : undefined;
   const actor = item.actor ? mapAuthor(item.actor) : undefined;
-  if (actor && followAction === "accepted") actor.relationship = "following";
-  if (actor && followAction === "declined") actor.relationship = "none";
   return {
     id: item.id,
     type: item.type,
