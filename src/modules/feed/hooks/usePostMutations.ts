@@ -310,7 +310,10 @@ export function useUserFollow() {
       const keys = [FEED_QUERY_KEY, ["paymoment", "post"], DISCOVER_QUERY_KEY, NOTIFICATIONS_QUERY_KEY, ["paymoment", "profile", "public"]] as const;
       await Promise.all(keys.map((queryKey) => queryClient.cancelQueries({ queryKey })));
       const snapshots = keys.flatMap((queryKey) => queryClient.getQueriesData({ queryKey }));
-      updateFollowCaches(queryClient, userId, enabled ? "following" : "none");
+      // Do not optimistically mark an enabled follow as "following": private
+      // profiles return "pending", and showing "following" briefly unlocks
+      // the profile before the server response arrives.
+      if (!enabled) updateFollowCaches(queryClient, userId, "none");
       return { snapshots };
     },
     onError: (_error, _variables, context) => {
