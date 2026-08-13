@@ -25,17 +25,21 @@ function notificationHref(item: ApiNotification) {
   return undefined;
 }
 function mapNotification(item: ApiNotification): PayNotification {
+  const followAction = item.type === "follow" && (item.payload.action === "requested" || item.payload.action === "following" || item.payload.action === "accepted" || item.payload.action === "declined") ? item.payload.action : undefined;
+  const actor = item.actor ? mapAuthor(item.actor) : undefined;
+  if (actor && followAction === "accepted") actor.relationship = "following";
+  if (actor && followAction === "declined") actor.relationship = "none";
   return {
     id: item.id,
     type: item.type,
-    user: item.actor ? mapAuthor(item.actor) : undefined,
+    user: actor,
     text: textFor(item.type, item.payload),
     time: relativeTime(item.created_at),
     read: Boolean(item.read_at),
     href: notificationHref(item),
     rewardAmount: item.type === "reward" && typeof item.payload.amount === "number" ? item.payload.amount : undefined,
     rewardAction: item.type === "reward" && (item.payload.action === "earned" || item.payload.action === "redeemed") ? item.payload.action : undefined,
-    followAction: item.type === "follow" && (item.payload.action === "requested" || item.payload.action === "following" || item.payload.action === "accepted" || item.payload.action === "declined") ? item.payload.action : undefined,
+    followAction,
   };
 }
 
