@@ -8,6 +8,7 @@ import { AuthorAvatar, PostCard, VerifiedMark } from "@/modules/feed";
 import { useProfile } from "../hooks/useProfile";
 import { usePublicProfilePosts } from "../hooks/usePublicProfile";
 import { formatProfileCount } from "../utils/formatProfileCount";
+import { normalizeWebsiteUrl } from "../utils/normalizeWebsiteUrl";
 import { EditProfileDialog } from "./EditProfileDialog";
 
 export function ProfileView() {
@@ -21,6 +22,7 @@ export function ProfileView() {
   const data = profile.data;
   const verified = Boolean(data.verified);
   const ownMoments = profilePosts.data?.pages.flatMap((page) => page.posts) ?? [];
+  const websiteUrl = normalizeWebsiteUrl(data.website);
 
   return (
     <div className="space-y-4">
@@ -41,7 +43,7 @@ export function ProfileView() {
           {data.interests && <p className="mt-3 text-sm text-primary">{data.interests.split(",").map((item) => `#${item.trim().replace(/\s+/g, "")}`).join("  ")}</p>}
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Icon icon="solar:map-point-linear" aria-hidden="true" />{data.location}</span>
-            <span className="flex items-center gap-1"><Icon icon="solar:link-linear" aria-hidden="true" />{data.website}</span>
+            {websiteUrl && <a href={websiteUrl} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center gap-1 rounded-sm text-primary underline decoration-primary/40 underline-offset-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Icon icon="solar:link-linear" aria-hidden="true" />Website</a>}
             <span className="flex items-center gap-1"><Icon icon="solar:calendar-linear" aria-hidden="true" />Joined {data.joinedAt}</span>
             {data.privateProfile && <span className="flex items-center gap-1"><Icon icon="solar:lock-keyhole-linear" aria-hidden="true" />Private</span>}
           </div>

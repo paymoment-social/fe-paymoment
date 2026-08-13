@@ -2,6 +2,7 @@ import { ApiError, apiRequest, mutationHeaders } from "@/lib/api/client";
 import { getDiscoverData } from "@/modules/discover/services/discover.service";
 import { mapApiPost } from "@/modules/feed/services/feed.service";
 import type { ApiUserProfile, ProfileData, ProfilePostsPage } from "../types";
+import { normalizeWebsiteUrl } from "../utils/normalizeWebsiteUrl";
 
 type ProfileResponse = { data: { user: ApiUserProfile }; meta: { request_id: string } };
 
@@ -21,7 +22,7 @@ export function mapProfile(user: ApiUserProfile): ProfileData {
     relationship: user.relationship,
     joinedAt: new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date(user.joined_at)),
     location: user.location ?? "",
-    website: user.website_url ?? "",
+    website: normalizeWebsiteUrl(user.website_url) ?? "",
     interests: user.interests.map((interest) => interest.label).join(", "),
     interestSlugs: user.interests.map((interest) => interest.slug),
     podcast: user.podcast_url ?? "",
