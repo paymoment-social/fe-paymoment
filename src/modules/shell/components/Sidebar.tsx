@@ -18,6 +18,7 @@ import { useCurrentUser } from "@/modules/auth/hooks/useCurrentUser";
 import { useSession } from "@/modules/auth/hooks/useSession";
 import { SettingsDialog } from "@/modules/profile";
 import { useUnreadNotificationCount } from "@/modules/notifications/hooks/useNotifications";
+import { useUnreadMessageCount } from "@/modules/messages/hooks/useMessages";
 import { NAVIGATION_ITEMS } from "../constants";
 import type { ShellSection } from "../types";
 import { sectionHref } from "../utils/sectionHref";
@@ -34,6 +35,7 @@ export function Sidebar({ active }: { active: ShellSection }) {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const unreadNotifications = useUnreadNotificationCount();
+  const unreadMessages = useUnreadMessageCount();
   const logoutMutation = useMutation({ mutationFn: logout, onSuccess: () => { queryClient.clear(); router.replace("/login"); } });
 
   const confirmLogout = async () => {
@@ -50,7 +52,7 @@ export function Sidebar({ active }: { active: ShellSection }) {
     <aside className="sticky top-0 hidden h-screen border-r border-border/70 pr-5 pt-7 lg:flex lg:flex-col">
       <Link href="/" className="mb-6 w-fit rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="PayMoment home"><ProductLogo /></Link>
       <nav aria-label="Primary" className="space-y-1.5">
-        {NAVIGATION_ITEMS.map((item) => <Link key={item.id} href={sectionHref(item.id)} className={cn("flex min-h-12 items-center gap-3.5 rounded-xl px-4 text-base transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", active === item.id ? "bg-gradient-to-r from-primary/20 to-primary/10 font-medium text-foreground ring-1 ring-primary/5" : "text-foreground/90 hover:bg-secondary/60 hover:text-foreground")}><AnimatedNavIcon section={item.id} className="size-6" /><span>{item.label}</span>{item.id === "notifications" && (unreadNotifications.data ?? 0) > 0 && <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground" aria-label={`${unreadNotifications.data} unread notifications`}>{unreadNotifications.data! > 99 ? "99+" : unreadNotifications.data}</span>}</Link>)}
+        {NAVIGATION_ITEMS.map((item) => <Link key={item.id} href={sectionHref(item.id)} className={cn("flex min-h-12 items-center gap-3.5 rounded-xl px-4 text-base transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", active === item.id ? "bg-gradient-to-r from-primary/20 to-primary/10 font-medium text-foreground ring-1 ring-primary/5" : "text-foreground/90 hover:bg-secondary/60 hover:text-foreground")}><AnimatedNavIcon section={item.id} className="size-6" /><span>{item.label}</span>{item.id === "notifications" && (unreadNotifications.data ?? 0) > 0 && <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground" aria-label={`${unreadNotifications.data} unread notifications`}>{unreadNotifications.data! > 99 ? "99+" : unreadNotifications.data}</span>}{item.id === "messages" && (unreadMessages.data ?? 0) > 0 && <span className="ml-auto grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground" aria-label={`${unreadMessages.data} unread messages`}>{unreadMessages.data! > 99 ? "99+" : unreadMessages.data}</span>}</Link>)}
         {currentUser.verified && <Link href="/article/new" className="flex min-h-12 items-center gap-3.5 rounded-xl px-4 text-base text-foreground/90 transition-colors duration-100 hover:bg-secondary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><HugeiconsIcon icon={News01Icon} size={24} strokeWidth={1.8} aria-hidden="true" /><span>Article</span><span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">Pro</span></Link>}
         {canModerate && <Link href="/moderation" className={cn("flex min-h-12 items-center gap-3.5 rounded-xl px-4 text-base transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", active === "moderation" ? "bg-gradient-to-r from-primary/20 to-primary/10 font-medium text-foreground ring-1 ring-primary/5" : "text-foreground/90 hover:bg-secondary/60 hover:text-foreground")}><Icon icon="solar:shield-warning-linear" className="size-6" aria-hidden="true" /><span>Moderation</span></Link>}
       </nav>

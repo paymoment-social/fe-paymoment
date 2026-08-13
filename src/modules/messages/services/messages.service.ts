@@ -17,6 +17,10 @@ export async function getConversations(): Promise<Conversation[]> {
   const response = await apiRequest<DataResponse<{ conversations: ApiConversation[] }>>("/api/v1/conversations");
   return (response.data.conversations ?? []).filter((item) => item.participant).map((item) => ({ id: item.id, user: mapAuthor(item.participant!), unread: item.unread, lastMessage: item.last_message ? { id: item.last_message.id, senderId: item.last_message.sender_id, body: item.last_message.body, createdAt: item.last_message.created_at } : null }));
 }
+export async function getUnreadMessageCount() {
+  const response = await apiRequest<{ data: { count: number } }>("/api/v1/conversations/unread-count");
+  return response.data.count;
+}
 
 export async function getConversationMessages(conversationId: string, cursor?: string) {
   const query = new URLSearchParams({ limit: "50" });

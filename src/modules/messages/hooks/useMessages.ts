@@ -2,16 +2,17 @@
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MESSAGES_QUERY_KEY } from "../constants";
-import { createConversation, createMessageRequest, getConversationMessages, getConversations, getIncomingMessageRequests, markConversationRead, respondToMessageRequest, sendConversationMessage } from "../services/messages.service";
+import { createConversation, createMessageRequest, getConversationMessages, getConversations, getIncomingMessageRequests, getUnreadMessageCount, markConversationRead, respondToMessageRequest, sendConversationMessage } from "../services/messages.service";
 import type { ChatMessage } from "../types";
 
 export function useMessages() { return useQuery({ queryKey: MESSAGES_QUERY_KEY, queryFn: getConversations }); }
+export function useUnreadMessageCount() { return useQuery({ queryKey: [...MESSAGES_QUERY_KEY, "unread-count"], queryFn: getUnreadMessageCount, staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true }); }
 export function useIncomingMessageRequests() { return useQuery({ queryKey: [...MESSAGES_QUERY_KEY, "requests"], queryFn: getIncomingMessageRequests, staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true }); }
 export function useRespondToMessageRequest() { const queryClient = useQueryClient(); return useMutation({ mutationFn: ({ id, decision }: { id: string; decision: "accept" | "decline" }) => respondToMessageRequest(id, decision), onSuccess: () => { void queryClient.invalidateQueries({ queryKey: [...MESSAGES_QUERY_KEY, "requests"] }); void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }); } }); }
 export function useConversationMessages(conversationId: string) { return useInfiniteQuery({ queryKey: [...MESSAGES_QUERY_KEY, conversationId], queryFn: ({ pageParam }) => getConversationMessages(conversationId, pageParam), initialPageParam: undefined as string | undefined, getNextPageParam: (last) => last.nextCursor, enabled: Boolean(conversationId) }); }
 export function useCreateConversation() { const queryClient = useQueryClient(); return useMutation({ mutationFn: createConversation, onSuccess: () => queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }) }); }
 export function useCreateMessageRequest() { const queryClient = useQueryClient(); return useMutation({ mutationFn: createMessageRequest, onSuccess: () => queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }) }); }
-export function useMarkConversationRead() { const queryClient = useQueryClient(); return useMutation({ mutationFn: markConversationRead, onSuccess: () => queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }) }); }
+export function useMarkConversationRead() { const queryClient = useQueryClient(); return useMutation({ mutationFn: markConversationRead, onSuccess: () => { void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }); void queryClient.invalidateQueries({ queryKey: [...MESSAGES_QUERY_KEY, "unread-count"] }); } }); }
 export function useSendConversationMessage() { const queryClient = useQueryClient(); return useMutation({
   mutationFn: sendConversationMessage,
   onMutate: async ({ conversationId, body, mediaAssetIds }) => {
@@ -19,5 +20,5 @@ export function useSendConversationMessage() { const queryClient = useQueryClien
     queryClient.setQueryData<{ pages: Array<{ messages: ChatMessage[]; nextCursor: string | null }>; pageParams: unknown[] }>(key, (current) => current ? { ...current, pages: current.pages.map((page, index) => index === 0 ? { ...page, messages: [optimistic, ...page.messages] } : page) } : current); return { previous };
   },
   onError: (_error, variables, context) => queryClient.setQueryData([...MESSAGES_QUERY_KEY, variables.conversationId], context?.previous),
-  onSuccess: (_message, variables) => { queryClient.invalidateQueries({ queryKey: [...MESSAGES_QUERY_KEY, variables.conversationId] }); queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }); },
+  onSuccess: (_message, variables) => { void queryClient.invalidateQueries({ queryKey: [...MESSAGES_QUERY_KEY, variables.conversationId] }); void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }); void queryClient.invalidateQueries({ queryKey: [...MESSAGES_QUERY_KEY, "unread-count"] }); },
 }); }
