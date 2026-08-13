@@ -2,7 +2,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { NOTIFICATIONS_QUERY_KEY } from "../constants";
 import { useNotificationsContext } from "../context/NotificationsContext";
-import { getNotificationPreferences, getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, updateNotificationPreferences } from "../services/notifications.service";
+import { getNotificationPreferences, getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead, respondFollowRequest, updateNotificationPreferences } from "../services/notifications.service";
 import type { NotificationPage, NotificationPreferences } from "../types";
 
 function isNotificationInfiniteData(value: unknown): value is InfiniteData<NotificationPage> {
@@ -41,6 +41,20 @@ export function useNotificationsReadAll() {
 }
 export function useNotificationPreferences() { return useQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "preferences"], queryFn: getNotificationPreferences }); }
 export function useUnreadNotificationCount() { return useQuery({ queryKey: [...NOTIFICATIONS_QUERY_KEY, "unread-count"], queryFn: getUnreadNotificationCount, staleTime: 0, refetchOnWindowFocus: true, refetchOnReconnect: true }); }
+export function useRespondFollowRequest() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ followerId, accepted }: { followerId: string; accepted: boolean; notificationId: string }) => respondFollowRequest(followerId, accepted),
+    onMutate: async ({ accepted, notificationId }) => {
+      await client.cancelQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      const snapshots = client.getQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY });
+      client.setQueriesData<InfiniteData<NotificationPage>>({ queryKey: NOTIFICATIONS_QUERY_KEY }, (current) => isNotificationInfiniteData(current) ? { ...current, pages: current.pages.map((page) => ({ ...page, notifications: page.notifications.map((item) => item.id === notificationId ? { ...item, read: true, followAction: accepted ? "accepted" : "declined", text: accepted ? "accepted your follow request." : "declined your follow request." } : item) })) } : current);
+      return { snapshots };
+    },
+    onError: (_error, _variables, context) => context?.snapshots.forEach(([key, value]) => client.setQueryData(key, value)),
+    onSettled: () => { void client.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY }); void client.invalidateQueries({ queryKey: ["paymoment", "profile", "public"] }); },
+  });
+}
 export function useUpdateNotificationPreferences() {
   const client = useQueryClient();
   const key = [...NOTIFICATIONS_QUERY_KEY, "preferences"];

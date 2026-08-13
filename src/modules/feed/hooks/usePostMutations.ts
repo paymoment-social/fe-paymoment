@@ -220,6 +220,11 @@ export function usePostPin() {
     mutationFn: ({ postId, pinned }: { postId: string; pinned: boolean }) => setPostPinned(postId, pinned),
     onSuccess: (_response, variables) => {
       updatePostCaches(queryClient, variables.postId, (post) => ({ ...post, pinned: variables.pinned }));
+      if (variables.pinned) {
+        const target = queryClient.getQueryData<FeedPost>(postQueryKey(variables.postId));
+        const authorId = target?.author.id;
+        if (authorId) POST_COLLECTION_QUERY_KEYS.forEach((queryKey) => queryClient.setQueriesData<InfiniteData<PostCollectionPage>>({ queryKey }, (current) => isPostCollectionInfiniteData(current) ? { ...current, pages: current.pages.map((page) => ({ ...page, posts: page.posts.map((post) => post.author.id === authorId ? { ...post, pinned: post.id === variables.postId } : post) })) } : current));
+      }
       void queryClient.invalidateQueries({ queryKey: ["paymoment", "profile", "public"] });
     },
   });

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -24,8 +24,9 @@ import { QuoteComposer } from "./QuoteComposer";
 import { QuotedPostCard } from "./QuotedPostCard";
 import { RepostMenu } from "./RepostMenu";
 
-export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?: "feed" | "detail" }) {
+export function PostCard({ post, variant = "feed", profileContext = false }: { post: FeedPost; variant?: "feed" | "detail"; profileContext?: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const currentUser = useCurrentUser();
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -42,6 +43,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
   const rewardMutation = useClaimMomentReward();
   const rewardIsClaimed = rewardClaimed || Boolean(post.rewardClaimed);
   const isVerified = post.author.id === currentUser.id ? currentUser.verified : post.author.verified;
+  const inProfileContext = profileContext || pathname === "/profile" || pathname.startsWith("/u/");
 
   async function shareMoment() {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -66,7 +68,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
           <span>· {post.activityAt ? relativePostTime(post.activityAt) : "now"}</span>
         </div>
       )}
-      {post.pinned && (
+      {inProfileContext && post.pinned && (
         <div className="mb-3 flex items-center gap-2 text-xs font-medium text-primary">
           <Icon icon="solar:pin-bold" className="size-4" aria-hidden="true" />
           <span>Pinned</span>
@@ -108,7 +110,7 @@ export function PostCard({ post, variant = "feed" }: { post: FeedPost; variant?:
             {post.isOwner && <DropdownMenuItem disabled={deleteMutation.isPending} className="text-destructive focus:text-destructive" onClick={() => setDeleteOpen(true)}>
               <Icon icon="solar:trash-bin-trash-linear" aria-hidden="true" /> Delete moment
             </DropdownMenuItem>}
-            {post.isOwner && <DropdownMenuItem disabled={pinMutation.isPending} onClick={() => pinMutation.mutate({ postId: post.id, pinned: !post.pinned }, { onSuccess: () => toast.success(post.pinned ? "Removed from profile" : "Pinned to profile"), onError: (error) => toast.error(error.message) })}>
+            {inProfileContext && post.isOwner && <DropdownMenuItem disabled={pinMutation.isPending} onClick={() => pinMutation.mutate({ postId: post.id, pinned: !post.pinned }, { onSuccess: () => toast.success(post.pinned ? "Removed from profile" : "Pinned to profile"), onError: (error) => toast.error(error.message) })}>
               <Icon icon={post.pinned ? "solar:pin-cross-linear" : "solar:pin-linear"} aria-hidden="true" /> {post.pinned ? "Unpin from profile" : "Pin to profile"}
             </DropdownMenuItem>}
           </DropdownMenuContent>

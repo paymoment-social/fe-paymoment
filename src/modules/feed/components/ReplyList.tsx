@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { useReplyLike } from "../hooks/usePostMutations";
 import type { FeedReply } from "../types";
 import { AuthorAvatar, VerifiedMark } from "./AuthorAvatar";
 import { ReplyComposer } from "./ReplyComposer";
+import { tokenizePostBody } from "../utils/postTokens";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -33,7 +35,13 @@ function ReplyThread({ postId, reply, depth = 0 }: { postId: string; reply: Feed
       <AuthorAvatar author={reply.author} className="size-10 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5"><span className="truncate text-sm font-semibold">{reply.author.handle}</span>{reply.author.verified && <VerifiedMark />}<span className="text-xs text-muted-foreground">· {reply.createdAt}</span></div>
-        <p className="mt-1 whitespace-pre-line text-[15px] leading-6">{reply.body}</p>
+        <p className="mt-1 whitespace-pre-line text-[15px] leading-6">{tokenizePostBody(reply.body).map((token, index) => {
+          if (token.kind === "text") return <span key={`${token.value}-${index}`}>{token.value}</span>;
+          const href = token.kind === "mention"
+            ? `/u/${encodeURIComponent(token.value.slice(1))}`
+            : `/discover?q=${encodeURIComponent(token.value)}`;
+          return <Link key={`${token.value}-${index}`} href={href} className={`rounded-sm font-medium underline decoration-primary/40 underline-offset-2 transition-colors hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${token.kind === "mention" ? "text-primary" : "text-violet-300"}`} aria-label={token.kind === "mention" ? `Open profile ${token.value}` : `Discover moments tagged ${token.value}`}>{token.value}</Link>;
+        })}</p>
         {reply.media && <Image src={reply.media} alt="Reply attachment" width={560} height={360} unoptimized className="mt-3 max-h-64 w-auto rounded-xl border object-cover" />}
         <div className="mt-2 flex gap-1">
           <Button variant="ghost" size="icon" className={reply.liked ? "size-9 text-rose-400" : "size-9"} aria-label={reply.liked ? "Unlike reply" : "Like reply"} disabled={!persisted || likeReply.isPending} onClick={() => likeReply.mutate({ replyId: reply.id, enabled: !reply.liked })}><Icon icon={reply.liked ? "solar:heart-bold" : "solar:heart-linear"} className="size-5" aria-hidden="true" /><span className="sr-only">{reply.likes} likes</span></Button>

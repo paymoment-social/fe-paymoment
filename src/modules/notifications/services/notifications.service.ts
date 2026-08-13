@@ -15,7 +15,8 @@ function textFor(type: ApiNotification["type"], payload: Record<string, unknown>
     if (payload.action === "redeemed" && amount) return `You redeemed ${label} for ${amount.toLocaleString()} BOX.`;
     return "Your BOX reward balance was updated.";
   }
-  return type === "like" ? "liked your Moment." : type === "reply" ? "replied to your Moment." : type === "mention" ? "mentioned you in a Moment." : type === "follow" ? "started following you." : type === "repost" ? "reposted your Moment." : type === "message" ? "sent you a message." : "sent you an update.";
+  if (type === "follow") return payload.action === "requested" ? "requested to follow you." : payload.action === "accepted" ? "accepted your follow request." : payload.action === "declined" ? "declined your follow request." : "started following you.";
+  return type === "like" ? "liked your Moment." : type === "reply" ? "replied to your Moment." : type === "mention" ? "mentioned you in a Moment." : type === "repost" ? "reposted your Moment." : type === "message" ? "sent you a message." : "sent you an update.";
 }
 function notificationHref(item: ApiNotification) {
   if (item.conversation_id) return `/messages?conversation=${encodeURIComponent(item.conversation_id)}`;
@@ -34,6 +35,7 @@ function mapNotification(item: ApiNotification): PayNotification {
     href: notificationHref(item),
     rewardAmount: item.type === "reward" && typeof item.payload.amount === "number" ? item.payload.amount : undefined,
     rewardAction: item.type === "reward" && (item.payload.action === "earned" || item.payload.action === "redeemed") ? item.payload.action : undefined,
+    followAction: item.type === "follow" && (item.payload.action === "requested" || item.payload.action === "following" || item.payload.action === "accepted" || item.payload.action === "declined") ? item.payload.action : undefined,
   };
 }
 
@@ -45,6 +47,7 @@ export async function getNotifications(filter: NotificationFilter, cursor?: stri
 }
 export async function markNotificationRead(id: string) { await apiRequest(`/api/v1/notifications/${id}/read`, { method: "PUT", headers: mutationHeaders() }); }
 export async function markAllNotificationsRead() { await apiRequest(`/api/v1/notifications/read-all`, { method: "PUT", headers: mutationHeaders() }); }
+export async function respondFollowRequest(followerId: string, accepted: boolean) { await apiRequest(`/api/v1/users/follow-requests/${encodeURIComponent(followerId)}`, { method: accepted ? "PUT" : "DELETE", headers: mutationHeaders() }); }
 export async function getUnreadNotificationCount() { const response = await apiRequest<{ data: { count: number } }>("/api/v1/notifications/unread-count"); return response.data.count; }
 export async function getNotificationPreferences() { const response = await apiRequest<{ data: { preferences: { likes: boolean; replies: boolean; mentions: boolean; follows: boolean; rewards: boolean; reposts: boolean; messages: boolean; emailDigest: boolean } } }>("/api/v1/notifications/preferences"); return response.data.preferences; }
 export async function updateNotificationPreferences(input: Partial<NotificationPreferences>) { const response = await apiRequest<{ data: { preferences: NotificationPreferences } }>("/api/v1/notifications/preferences", { method: "PUT", headers: mutationHeaders(), body: JSON.stringify({ ...input, ...(input.emailDigest !== undefined ? { email_digest: input.emailDigest } : {}) }) }); return response.data.preferences; }
